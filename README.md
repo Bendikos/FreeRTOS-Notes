@@ -2094,3 +2094,25 @@ xTaskGenericNotifyWait( 	tskDEFAULT_INDEX_TO_NOTIFY, 	\
 							( xTicksToWait )               ) 
 ```
 
+此函数用于获取通知值和清除通知值的指定位值，适用于模拟队列和事件标志组，使用该函数来获取任务通知 。 
+
+```c
+BaseType_t    xTaskGenericNotifyWait( 	UBaseType_t 	uxIndexToWaitOn,
+						uint32_t 		ulBitsToClearOnEntry,
+						uint32_t 		ulBitsToClearOnExit,
+						uint32_t * 		pulNotificationValue,
+						TickType_t 		xTicksToWait	    ); 
+```
+
+|         形参          |                         描述                          |
+| :-------------------: | :---------------------------------------------------: |
+|    uxIndexToWaitOn    |         任务的指定通知（任务通知相关数组成员)         |
+| ulBitesToClearOnEntry |   等待前清零指定任务通知值的比特位（旧值对应bit清0)   |
+| ulBitesToClearOnExit  | 成功等待后清零指定的任务通知值比特位（新值对应bit清0) |
+| pulNotificationValue  |      用来取出通知值（如果不需要取出，可设为NULL)      |
+|     xTicksToWait      |             阻塞等待任务通知值的最大时间              |
+
+| 返回值  |       描述       |
+| :-----: | :--------------: |
+| pdTRUE  | 等待任务通知成功 |
+| pdFALSE | 等待任务通知失败 |
