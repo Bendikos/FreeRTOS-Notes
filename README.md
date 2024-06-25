@@ -66,7 +66,7 @@ FreeRTOS 中任务共存在4种状态:
 2. 阻塞列表: pxDelayedTaskList
 3. 挂起列表: xSuspendedTaskList
 
-# FreeRTOS的任务创建和删除
+# 任务创建和删除
 
 任务的创建和删除本质就是调用FreeRTOS的API函数
 
@@ -202,7 +202,7 @@ void vTaskDelete(TaskHandle_t xTaskToDelete);
 3. 判断所需要删除的任务: 如果删除任务自身, 需先添加到等待删除列表, 内存释放将在空闲任务执行,如果删除其他任务, 释放内存, 任务数量--
 4. 更新下个任务的阻塞时间: 更新下一个任务的阻塞超时时间, 以防被删除的任务就是下一个阻塞超时的任务
 
-# FreeRTOS的任务挂起与恢复
+# 任务挂起与恢复
 
 ## 任务的挂起与恢复的API函数
 
@@ -285,7 +285,7 @@ BaseType_t xTaskResumeFromISR(TaskHandle_t xTaskToResume);
 2. 判断任务是否在挂起列表中: 成立就会将该任务在挂起列表中移除,  将该任务添加到就绪列表中
 3. 判断恢复任务优先级: 判断恢复的任务优先级是否大于当前正在运行的 是的话执行任务切换
 
-# FreeRTOS中断管理
+# 中断管理
 
 ## 什么是中断? 
 
@@ -409,7 +409,7 @@ static portFORCE_INLINE void vPortSetBASEPRI( uint32_t ulBASEPRI )
 
 FreeRTOS中断管理就是利用BASEPRI寄存器实现的
 
-# FreeRTOS临界段代码保护及任务调度器挂起和恢复
+# 临界段代码保护及任务调度器挂起和恢复
 
 ## 临界段代码保护简介
 
@@ -486,7 +486,7 @@ xTaskResumeAll();
 2. 它仅仅是防止了任务之间的资源争夺, 中断照样可以直接响应; 
 3. 挂起调度器的方式, 适用于临界区位于任务与任务之间; 既不用去延时中断, 又可以做到临界区的安全
 
-# FreeRTOS的列表和列表项
+# 列表和列表项
 
 ## 列表和列表项的简介
 
@@ -741,7 +741,7 @@ UBaseType_t uxListRemove( ListItem_t *const pxItemToRemove )
 }
 ```
 
-# FreeRTOS任务调度
+# 任务调度
 
 ## 开启任务调度器
 
@@ -957,9 +957,9 @@ bx r14
 
 ![PendSV的出栈和入栈](picture/PendSV的出栈和入栈.png)
 
-# FreeRTOS任务状态查询API函数介绍
+# 任务状态查询API函数介绍
 
-## FreeRTOS任务相关API函数介绍
+## 任务相关API函数介绍
 
 | **函数**                      | **描述**                       |
 | ----------------------------- | ------------------------------ |
@@ -1186,7 +1186,7 @@ Abs Time: 任务实际运行的总时间 (绝对时间)
 
 ② portGET_RUN_TIME_COUNTER_VALUE(): 用于获取该功能时基硬件定时器计数的计数值 。
 
-# FreeRTOS时间管理
+# 时间管理
 
 ## 延时函数介绍
 
@@ -1207,7 +1207,7 @@ Abs Time: 任务实际运行的总时间 (绝对时间)
 
 (3)为其他任务在运行
 
-# FreeRTOS消息队列
+# 消息队列
 
 ## 队列简介
 
@@ -1903,3 +1903,194 @@ EventBits_t xEventGroupSync(EventGroupHandle_t xEventGroup,
 例子: Task1：做饭	Task2：做菜, Task1做好自己的事之后，需要等待菜也做好，大家在一起吃饭。
 
 > 特点：同步！
+
+# 任务通知
+
+## 任务通知的简介
+
+任务通知：用来通知任务的，任务控制块中的结构体成员变量 ulNotifiedValue就是这个通知值。
+
+- 使用队列、信号量、事件标志组时都需另外创建一个结构体，通过中间的结构体进行间接通信！
+
+![使用队列通知任务](picture/使用队列通知任务.png)
+
+- 使用任务通知时，任务结构体TCB中就包含了内部对象，可以直接接收别人发过来的"通知"
+
+![直接进行任务通知](picture/直接进行任务通知.png)
+
+### 任务通知值的更新方式
+
+- 不覆盖接受任务的通知值
+
+- 覆盖接受任务的通知值
+
+- 更新接受任务通知值的一个或多个bit
+
+- 增加接受任务的通知值
+
+> 只要合理，灵活的利用任务通知的特点，可以在一些场合中替代队列、信号量、事件标志组！
+
+### 任务通知的优势及劣势
+
+任务通知的优势：
+
+1. 效率更高	使用任务通知向任务发送事件或数据比使用队列、事件标志组或信号量快得多
+
+2. 使用内存更小	使用其他方法时都要先创建对应的结构体，使用任务通知时无需额外创建结构体
+
+任务通知的劣势：
+
+1. 无法发送数据给ISR	ISR没有任务结构体，所以无法给ISR发送数据。但是ISR可以使用任务通知的功能，发数据给任务。
+1. 无法广播给多个任务	任务通知只能是被指定的一个任务接收并处理 
+1. 无法缓存多个数据	任务通知是通过更新任务通知值来发送数据的，任务结构体中只有一个任务通知值，只能保持一个数据。
+1. 发送受阻不支持阻塞	发送方无法进入阻塞状态等待
+
+## 任务通知值和通知状态
+
+任务都有一个结构体：任务控制块TCB，它里边有两个结构体成员变量：
+
+```c
+typedef struct tskTaskControlBlock 
+{
+	… …
+    	#if ( configUSE_TASK_NOTIFICATIONS  ==  1 )
+        	volatile  uint32_t    ulNotifiedValue [ configTASK_NOTIFICATION_ARRAY_ENTRIES ];
+        	volatile  uint8_t      ucNotifyState [ configTASK_NOTIFICATION_ARRAY_ENTRIES ];
+    	endif
+	… …
+} tskTCB;
+#define  configTASK_NOTIFICATION_ARRAY_ENTRIES	1  	/* 定义任务通知数组的大小, 默认: 1 */
+```
+
+- 一个是 uint32_t 类型，用来表示通知值
+
+- 一个是 uint8_t 类型，用来表示通知状态
+
+### 任务通知值
+
+任务通知值的更新方式有多种类型：
+
+- 计数值（数值累加，类似信号量）
+
+- 相应位置一（类似事件标志组）
+
+- 任意数值（支持覆写和不覆写，类似队列）
+
+### 任务通知状态
+
+其中任务通知状态共有3种取值：
+
+```c
+#define     taskNOT_WAITING_NOTIFICATION ( ( uint8_t ) 0 ) /* 任务未等待通知 */
+#define 	taskWAITING_NOTIFICATION     ( ( uint8_t ) 1 ) /* 任务在等待通知, 提前调用接收函数 */
+#define 	taskNOTIFICATION_RECEIVED    ( ( uint8_t ) 2 ) /* 任务在等待接收, 提前调用发送函数 */
+```
+
+### 任务通知相关API函数介绍
+
+任务通知API函数主要有两类：①发送通知 ，②接收通知。
+
+> 注意：发送通知API函数可以用于任务和中断服务函数中；接收通知API函数只能用在任务中。
+
+①发送通知相关API函数：
+
+|             函数             |                            描述                            |
+| :--------------------------: | :--------------------------------------------------------: |
+|        xTaskNotify()         |                    发送通知，带有通知值                    |
+|    xTaskNotifyAndQuery()     |       发送通知，带有通知值并且保留接收任务的原通知值       |
+|      xTaskNotifyGive()       |                    发送通知，不带通知值                    |
+|     xTaskNotifyFromISR()     |              在中断中发送任务通知，带有通知值              |
+| xTaskNotifyAndQueryFromISR() | 在中断中发送任务通知，带有通知值并且保留接收任务的原通知值 |
+|   vTaskNotifyGiveFromISR()   |              在中断中发送任务通知，不带通知值              |
+
+```c
+#define xTaskNotifyAndQuery(xTaskToNotify,ulValue,eAction,pulPreviousNotifyValue)\
+xTaskGenericNotify( ( xTaskToNotify ), 
+				   ( tskDEFAULT_INDEX_TO_NOTIFY ), 
+				   ( ulValue ), 
+				   ( eAction ),
+				   ( pulPreviousNotifyValue ) )
+```
+
+```c
+#define	xTaskNotify(xTaskToNotify,ulValue,eAction)\
+xTaskGenericNotify((xTaskToNotify),(tskDEFAULT_INDEX_TO_NOTIFY),(ulValue),(eAction),NULL)
+```
+
+```c
+#define	xTaskNotifyGive(xTaskToNotify)\
+xTaskGenericNotify((xTaskToNotify),(tskDEFAULT_INDEX_TO_NOTIFY),(0),eIncrement,NULL)
+```
+
+```c
+BaseType_t  xTaskGenericNotify( TaskHandle_t xTaskToNotify,
+                                UBaseType_t 	uxIndexToNotify,
+                                uint32_t 		ulValue,
+                                eNotifyAction 	eAction,
+                                uint32_t * 		pulPreviousNotificationValue  )
+```
+
+|             形参             |                    描述                     |
+| :--------------------------: | :-----------------------------------------: |
+|        xTaskToNotify         |           接收任务通知的任务句柄            |
+|       uxIndexToNotify        |    任务的指定通知（任务通知相关数组成员)    |
+|           ulValue            |                 任务通知值                  |
+|           eAction            |          通知方式（通知值更新方式)          |
+| pulPreviousNotificationValue | 用于保存更新前的任务通知值（为NULL则不保存) |
+
+任务通知方式`eAction`共有以下几种：
+
+```c
+typedef enum
+{    
+	eNoAction = 0, 			/* 无操作 */
+	eSetBits				/* 更新指定bit */
+	eIncrement				/* 通知值加一 */
+ 	eSetValueWithOverwrite		/* 覆写的方式更新通知值 */
+	eSetValueWithoutOverwrite	/* 不覆写通知值 */
+} eNotifyAction;
+```
+
+②接收通知相关API函数：
+
+|        函数        |                             描述                             |
+| :----------------: | :----------------------------------------------------------: |
+| ulTaskNotifyTake() | 获取任务通知，可以设置在退出此函数的时候将任务通知值清零或者减一。  当任务通知用作二值信号量或者计数信号量的时候，使用此函数来获取信号量 |
+| xTaskNotifyWait()  | 获取任务通知，比 ulTaskNotifyTak()更为复杂，可获取通知值和清除通知值的指定位 |
+
+总结：
+
+- 当任务通知用作于信号量时，使用函数获取信号量：ulTaskNotifyTake()
+- 当任务通知用作于事件标志组或队列时，使用此函数来获取： xTaskNotifyWait()
+
+```c
+#define ulTaskNotifyTake(xClearCountOnExit,xTicksToWait)\
+ulTaskGenericNotifyTake(( tskDEFAULT_INDEX_TO_NOTIFY ),( xClearCountOnExit ),( xTicksToWait ))
+```
+
+此函数用于接收任务通知值，可以设置在退出此函数的时候将任务通知值清零或者减一
+
+|       形参        |                             描述                             |
+| :---------------: | :----------------------------------------------------------: |
+|  uxIndexToWaitOn  |            任务的指定通知（任务通知相关数组成员)             |
+| xClearCountOnExit | 指定在成功接收通知后，将通知值清零或减 1，  pdTRUE：把通知值清零；pdFALSE：把通知值减一 |
+|   xTicksToWait    |                 阻塞等待任务通知值的最大时间                 |
+
+| 返回值 |              描述              |
+| :----: | :----------------------------: |
+|   0    |            接收失败            |
+|  非 0  | 接收成功，返回任务通知的通知值 |
+
+```c
+#define xTaskNotifyWait(	ulBitsToClearOnEntry, 			\
+							ulBitsToClearOnExit, 			\
+							pulNotificationValue, 			\
+							xTicksToWait) 				\
+
+xTaskGenericNotifyWait( 	tskDEFAULT_INDEX_TO_NOTIFY, 	\
+							( ulBitsToClearOnEntry ), 			\
+							( ulBitsToClearOnExit ), 			\
+							( pulNotificationValue ), 			\
+							( xTicksToWait )               ) 
+```
+
