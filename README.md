@@ -649,20 +649,20 @@ void vListInitialiseItem( ListItem_t *const pxItem )
 void vListInsert( List_t *const pxList, ListItem_t *const pxNewListItem )
 {
     ListItem_t *pxIterator;
-    const TickType_t  xValueOfInsertion = pxNewListItem->xItemValue;     /* 获取列表项的数值依据数值升序排列 */
+    const TickType_t  xValueOfInsertion = pxNewListItem->xItemValue;  /* 获取列表项的数值依据数值升序排列 */
     listTEST_LIST_INTEGRITY( pxList );                         /* 检查参数是否正确 */
-    listTEST_LIST_ITEM_INTEGRITY( pxNewListItem );                 /* 如果待插入列表项的值为最大值 */ 
+    listTEST_LIST_ITEM_INTEGRITY( pxNewListItem );            /* 如果待插入列表项的值为最大值 */
     if ( xValueOfInsertion == portMAX_DELAY )
     {
-        pxIterator = pxList->xListEnd.pxPrevious;                 /* 插入的位置为列表 xListEnd 前面 */
+        pxIterator = pxList->xListEnd.pxPrevious;            /* 插入的位置为列表 xListEnd 前面 */
     }
     else
     {
-        for (  pxIterator = ( ListItem_t * ) & ( pxList->xListEnd );             /*遍历列表中的列表项, 找到插入的位置*/
+        for (  pxIterator = ( ListItem_t * ) & ( pxList->xListEnd );      /*遍历列表中的列表项, 找到插入的位置*/
                 pxIterator->pxNext->xItemValue <= xValueOfInsertion;
                 pxIterator = pxIterator->pxNext  ) { }
     }
-    pxNewListItem->pxNext = pxIterator->pxNext;                    /* 将待插入的列表项插入指定位置 */
+    pxNewListItem->pxNext = pxIterator->pxNext;                  /* 将待插入的列表项插入指定位置 */
     pxNewListItem->pxNext->pxPrevious = pxNewListItem;
     pxNewListItem->pxPrevious = pxIterator;
     pxIterator->pxNext = pxNewListItem;
@@ -2331,3 +2331,162 @@ BaseType_t xTimerChangePeriod( TimerHandle_t        xTimer,
 | :----: | :----------------------------: |
 | pdPASS | 软件定时器定时超时时间更改成功 |
 | pdFAIL | 软件定时器定时超时时间更改失败 |
+
+# Tickless低功耗模式
+
+## 低功耗模式简介
+
+很多应用场合对于功耗的要求很严格，比如可穿戴低功耗产品、物联网低功耗产品等
+
+一般MCU都有相应的低功耗模式，裸机开发时可以使用MCU的低功耗模式。
+
+FreeRTOS也提供了一个叫Tickless的低功耗模式，方便带FreeRTOS操作系统的应用开发
+
+## STM32三种低功耗模式
+
+- 睡眠模式
+- 停止模式
+- 待机模式
+
+这里我们主要使用的是这个睡眠模式
+
+1、进入睡眠模式：
+
+WFI 指令：__WFI
+
+WFE 指令：__WFE 
+
+2、退出睡眠模式：
+
+任何中断或事件都可以唤醒睡眠模式
+
+![STM32三种低功耗模式](picture/STM32三种低功耗模式.png)
+
+- 如何降低功耗？
+
+Tickless低功耗模式的本质是通过调用指令 WFI 实现睡眠模式！
+
+- Tickless模式的设计思想？
+
+![各任务运行占比](picture/各任务运行占比.png)
+
+任务运行时间统计实验中，可以看出，在整个系统的运行过程中，其实大部分时间是在执行空闲任务的
+
+空闲任务：是在系统中的所有其它任务都阻塞或被挂起时才运行的
+
+## Tickless模式详解
+
+为了可以降低功耗，又不影响系统运行，该如何做？
+
+可以在本该空闲任务执行的期间，让MCU 进入相应的低功耗模式；当其他任务准备运行的时候，唤醒MCU退出低功耗模式
+
+难点：
+
+1. 进入低功耗之后，多久唤醒？也就是下一个要运行的任务如何被准确唤醒
+
+2. 任何中断均可唤醒MCU，若滴答定时器频繁中断则会影响低功耗的效果？
+
+将滴答定时器的中断周期修改为低功耗运行时间
+
+退出低功耗后，需补上系统时钟节拍数
+
+> 值得庆幸的是：FreeRTOS 的低功耗 Tickless 模式机制已经处理好了这些难点。
+
+## Tickless模式相关配置项
+
+- configUSE_TICKLESS_IDLE
+
+此宏用于使能低功耗 Tickless 模式 
+
+- configEXPECTED_IDLE_TIME_BEFORE_SLEEP 
+
+此宏用于定义系统进入相应低功耗模式的最短时长
+
+- configPRE_SLEEP_PROCESSING(x) 
+
+此宏用于定义需要在系统进入低功耗模式前执行的事务，如：进入低功耗前关闭外设时钟，以达到降低功耗的目的
+
+- configPOSR_SLEEP_PROCESSING(x) 
+
+此宏用于定义需要在系统退出低功耗模式后执行的事务，如：退出低功耗后开启之前关闭的外设时钟，以使系统能够正常运行
+
+# 内存管理
+
+## 内存管理简介
+
+在使用 FreeRTOS 创建任务、队列、信号量等对象的时，一般都提供了两种方法：
+
+**动态方法创建**    自动地从 FreeRTOS 管理的内存堆中申请创建对象所需的内存，并且在对象删除后，
+
+可将这块内存释放回FreeRTOS管理的内存堆 
+
+**静态方法创建**    需用户提供各种内存空间，并且使用静态方式占用的内存空间一般固定下来了，即使任务、队列等被删除后，这些被占用的内存空间一般没有其他用途
+
+> **动态方式管理内存**相比与静态方式，更加灵活。 
+
+除了 FreeRTOS 提供的动态内存管理方法，标准的 C 库也提供了函数 malloc()和函数 free()来实现动态地申请和释放内存 。
+
+疑问：为啥不用标准的 C 库自带的内存管理算法？
+
+因为标准 C 库的动态内存管理方法有如下几个缺点：
+
+- 占用大量的代码空间 不适合用在资源紧缺的嵌入式系统中
+- 没有线程安全的相关机制 
+- 运行有不确定性，每次调用这些函数时花费的时间可能都不相同
+
+- 内存碎片化
+
+> 因此，FreeRTOS 提供了多种动态内存管理的算法，可针对不同的嵌入式系统！
+
+FreeRTOS提供了5种动态内存管理算法，分别为： heap_1、heap_2、heap_3、heap_4、heap_5 。 
+ 如下所示：
+
+|  算法  |                  优点                   |                     缺点                     |
+| :----: | :-------------------------------------: | :------------------------------------------: |
+| heap_1 |           分配简单，时间确定            |        只允许申请内存，不允许释放内存        |
+| heap_2 |           允许申请和释放内存            | 不能合并相邻的空闲内存块会产生碎片、时间不定 |
+| heap_3 | 直接调用C库函数malloc()和 free() ，简单 |               速度慢、时间不定               |
+| heap_4 | 相邻空闲内存可合并，减少内存碎片的产生  |                   时间不定                   |
+| heap_5 |   能够管理多个非连续内存区域的 heap_4   |                   时间不定                   |
+
+在我们FreeRTOS例程中，使用的均为`heap_4`内存管理算法
+
+### heap_1内存管理算法
+
+heap_1只实现了pvPortMalloc，没有实现vPortFree；也就是说，它只能申请内存，无法释放内存！
+
+如果你的工程，创建好的任务、队列、信号量等都不需要被删除，那么可以使用heap_1内存管理算法
+
+heap_1的实现最为简单，管理的内存堆是一个数组，在申请内存的时候， heap_1 内存管理算法只是简单地从数组中分出合适大小的内存，内存堆数组的定义如下所示 ：
+
+```c
+/* 定义一个大数组作为 FreeRTOS 管理的内存堆 */
+static uint8_t ucHeap[ configTOTAL_HEAP_SIZE ];
+```
+
+heap_1内存管理算法的分配过程如下图所示：
+
+![heap_1内存管理算法的分配过程](picture/heap_1内存管理算法的分配过程.png)
+
+>  heap_1内存管理算法，只能申请无法释放！
+
+### heap_2内存管理算法
+
+- 相比于 heap_1 内存管理算法， heap_2 内存管理算法使用最适应算法，并且支持释放内存； 
+- heap_2 内存管理算法并不能将相邻的空闲内存块合并成一个大的空闲内存块；因此 heap_2 内存管理算法不可避免地会产生内存碎片； 
+
+**最适应算法：**
+
+假设heap有3块空闲内存（按内存块大小由小到大排序）：5字节、25字节、50字节
+
+现在新创建一个任务需要申请20字节的内存
+
+第一步：找出最小的、能满足pvPortMalloc的内存：25字节
+
+第二步：把它划分为20字节、5字节；返回这20字节的地址，剩下的5字节仍然是空闲状态，留给后续的pvPortMalloc使用
+
+内存碎片是由于多次申请和释放内存，但释放的内存无法与相邻的空闲内存合并而产生的
+
+![heap_2内存管理算法的分配过程](picture/heap_2内存管理算法的分配过程.png)
+
+适用场景：频繁的创建和删除任务，且所创建的任务堆栈都相同，这类场景下Heap_2没有碎片化的问题
