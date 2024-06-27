@@ -70,11 +70,11 @@ FreeRTOS 中任务共存在4种状态:
 
 任务的创建和删除本质就是调用FreeRTOS的API函数
 
-| API函数             | 描述             |
-| ------------------- | ---------------- |
-| xTaskCreate()       | 动态方式创建任务 |
+|       API函数       |       描述       |
+| :-----------------: | :--------------: |
+|    xTaskCreate()    | 动态方式创建任务 |
 | xTaskCreateStatic() | 静态方式创建任务 |
-| vTaskDelete()       | 删除任务         |
+|    vTaskDelete()    |     删除任务     |
 
 **动态创建任务**: 任务的任务控制块以及任务的栈空间所需的内存, 均由 FreeRTOS 从 FreeRTOS 管理的堆中分配
 **静态创建任务**: 任务的任务控制块以及任务的栈空间所需的内存, 需用户分配提供
@@ -84,19 +84,19 @@ FreeRTOS 中任务共存在4种状态:
 ```c
 BaseType_t xTaskCreate
 (     
-    TaskFunction_t                     pxTaskCode,        /* 指向任务函数的指针 */
-    const char *const                 pcName,         /* 任务名字, 最大长度configMAX_TASK_NAME_LEN */
-    const configSTACK_DEPTH_TYPE    usStackDepth,     /* 任务堆栈大小, 注意字为单位 */
-    void *const                     pvParameters,    /* 传递给任务函数的参数 */
-    UBaseType_t                     uxPriority,        /* 任务优先级, 范围: 0 ~ configMAX_PRIORITIES - 1 */
-    TaskHandle_t *const             pxCreatedTask     /* 任务句柄, 就是任务的任务控制块*/
+    TaskFunction_t                pxTaskCode,        /* 指向任务函数的指针 */
+    const char *const             pcName,         /* 任务名字, 最大长度configMAX_TASK_NAME_LEN */
+    const configSTACK_DEPTH_TYPE  usStackDepth,     /* 任务堆栈大小, 注意字为单位 */
+    void *const                   pvParameters,    /* 传递给任务函数的参数 */
+    UBaseType_t           uxPriority,        /* 任务优先级, 范围: 0 ~ configMAX_PRIORITIES - 1 */
+    TaskHandle_t *const           pxCreatedTask     /* 任务句柄, 就是任务的任务控制块*/
 );
 ```
 
 
-| 返回值                                | 描述         |
-| ------------------------------------- | ------------ |
-| pdPASS                                | 任务创建成功 |
+|                返回值                 |     描述     |
+| :-----------------------------------: | :----------: |
+|                pdPASS                 | 任务创建成功 |
 | errCOULD_NOT_ALLOCATE_REQUIRED_MEMORY | 任务创建失败 |
 
 ### 实现动态创建任务流程 (用起来只需这三步)
@@ -116,12 +116,12 @@ BaseType_t xTaskCreate
 ```c
 typedef struct tskTaskControlBlock
 {
-    volatile StackType_t *pxTopOfStack;     /* 任务栈栈顶, 必须为TCB的第一个成员 */
+    volatile StackType_t    *pxTopOfStack;     /* 任务栈栈顶, 必须为TCB的第一个成员 */
     ListItem_t              xStateListItem;    /* 任务状态列表项 */
     ListItem_t              xEventListItem;    /* 任务事件列表项 */
-    UBaseType_t          uxPriority;        /* 任务优先级, 数值越大, 优先级越大 */
-    StackType_t          *pxStack;            /* 任务栈起始地址 */
-    char                  pcTaskName[ configMAX_TASK_NAME_LEN ]; /* 任务名字 */
+    UBaseType_t             uxPriority;        /* 任务优先级, 数值越大, 优先级越大 */
+    StackType_t             *pxStack;          /* 任务栈起始地址 */
+    char                    pcTaskName[ configMAX_TASK_NAME_LEN ]; /* 任务名字 */
     …
     省略很多条件编译的成员
 } tskTCB;
@@ -136,27 +136,27 @@ typedef struct tskTaskControlBlock *TaskHandle_t;
 
 > 任务栈栈顶: 在任务切换时的任务上下文保存、任务恢复息息相关
 >
-> 注意: 每个任务都有属于自己的任务控制块, 类似身份证
+> 每个任务都有属于自己的任务控制块, 类似身份证
 
 ## 静态创建任务函数
 
 ```c
 TaskHandle_t xTaskCreateStatic
 (
-    TaskFunction_t            pxTaskCode,                /* 指向任务函数的指针 */
-    const char *const        pcName,                    /* 任务函数名 */
+    TaskFunction_t            pxTaskCode,               /* 指向任务函数的指针 */
+    const char *const         pcName,                   /* 任务函数名 */
     const uint32_t            ulStackDepth,             /* 任务堆栈大小注意字为单位 */
-    void *const            pvParameters,                 /* 传递的任务函数参数 */
-    UBaseType_t                uxPriority,             /* 任务优先级 */
-    StackType_t *const        puxStackBuffer,         /* 任务堆栈, 一般为数组, 由用户分配 */
-    StaticTask_t *const    pxTaskBuffer                /* 任务控制块指针, 由用户分配 */
+    void *const               pvParameters,             /* 传递的任务函数参数 */
+    UBaseType_t               uxPriority,               /* 任务优先级 */
+    StackType_t *const        puxStackBuffer,           /* 任务堆栈, 一般为数组, 由用户分配 */
+    StaticTask_t *const       pxTaskBuffer              /* 任务控制块指针, 由用户分配 */
 );
 ```
 
-| 返回值 | 描述                                 |
-| ------ | ------------------------------------ |
-| NULL   | 用户没有提供相应的内存, 任务创建失败 |
-| 其他值 | 任务句柄, 任务创建成功               |
+| 返回值 |                 描述                 |
+| :----: | :----------------------------------: |
+|  NULL  | 用户没有提供相应的内存, 任务创建失败 |
+| 其他值 |        任务句柄, 任务创建成功        |
 
 ### 静态创建任务使用流程 (用起来只需这五步)
 
@@ -166,7 +166,7 @@ TaskHandle_t xTaskCreateStatic
 4. 定义函数入口参数
 5. 编写任务函数
 
-> 此函数创建的任务会立刻进入就绪态, 由任务调度器调度运行
+> `静态创建任务函数`创建的任务会立刻进入就绪态, 由任务调度器调度运行
 
 ### 静态创建内部实现
 
@@ -179,8 +179,8 @@ TaskHandle_t xTaskCreateStatic
 void vTaskDelete(TaskHandle_t xTaskToDelete);
 ```
 
-| 形参          | 描述                 |
-| ------------- | -------------------- |
+|     形参      |         描述         |
+| :-----------: | :------------------: |
 | xTaskToDelete | 待删除任务的任务句柄 |
 
 > 用于删除已被创建的任务, 被删除的任务将从就绪态任务列表、阻塞态任务列表、挂起态任务列表和事件列表中移除
@@ -206,10 +206,10 @@ void vTaskDelete(TaskHandle_t xTaskToDelete);
 
 ## 任务的挂起与恢复的API函数
 
-| API函数              | 描述                     |
-| -------------------- | ------------------------ |
-| vTaskSuspend()       | 挂起任务                 |
-| vTaskResume()        | 恢复被挂起的任务         |
+|       API函数        |           描述           |
+| :------------------: | :----------------------: |
+|    vTaskSuspend()    |         挂起任务         |
+|    vTaskResume()     |     恢复被挂起的任务     |
 | xTaskResumeFromISR() | 在中断中恢复被挂起的任务 |
 
 **挂起**: 挂起任务类似暂停, 可恢复; 删除任务, 无法恢复, 类似`人死两清`
@@ -224,8 +224,8 @@ void vTaskDelete(TaskHandle_t xTaskToDelete);
 void vTaskSuspend(TaskHandle_t xTaskToSuspend);
 ```
 
-| 形参           | 描述                 |
-| -------------- | -------------------- |
+|      形参      |         描述         |
+| :------------: | :------------------: |
 | xTaskToSuspend | 待挂起任务的任务句柄 |
 
 此函数用于挂起任务, 使用时需将宏`INCLUDE_vTaskSuspend`配置为 1。 
@@ -240,8 +240,8 @@ void vTaskSuspend(TaskHandle_t xTaskToSuspend);
 任务中恢复被挂起函数: void vTaskResume(TaskHandle_t xTaskToResume) 
 ```
 
-| 形参          | 描述                 |
-| ------------- | -------------------- |
+|     形参      |         描述         |
+| :-----------: | :------------------: |
 | xTaskToResume | 待恢复任务的任务句柄 |
 
 使用该函数注意宏:`INCLUDE_vTaskSuspend`必须定义为 1
@@ -256,13 +256,13 @@ void vTaskSuspend(TaskHandle_t xTaskToSuspend);
 BaseType_t xTaskResumeFromISR(TaskHandle_t xTaskToResume); 
 ```
 
-| 形参          | **描述**             |
-| ------------- | -------------------- |
+|     形参      |         描述         |
+| :-----------: | :------------------: |
 | xTaskToResume | 待恢复任务的任务句柄 |
 
-| 返回值  | 描述                         |
-| ------- | ---------------------------- |
-| pdTRUE  | 任务恢复后需要进行任务切换   |
+| 返回值  |             描述             |
+| :-----: | :--------------------------: |
+| pdTRUE  |  任务恢复后需要进行任务切换  |
 | pdFALSE | 任务恢复后不需要进行任务切换 |
 
 使用该函数注意宏:`INCLUDE_vTaskSuspend`和`INCLUDE_xTaskResumeFromISR`必须定义为 1
@@ -317,15 +317,15 @@ STM32 的中断优先级可以分为`抢占优先级`和`子优先级 `
 
 一共有 5 种分配方式, 对应着中断优先级分组的 5 个组 
 
-| 优先级分组           | 抢占优先级        | 子优先级        | 优先级配置寄存器高 4 位                   |
-| -------------------- | ----------------- | --------------- | ----------------------------------------- |
-| NVIC_PriorityGroup_0 | 0 级抢占优先级    | 0-15 级子优先级 | 0bit 用于抢占优先级     4bit 用于子优先级 |
+|      优先级分组      |    抢占优先级     |    子优先级     |          优先级配置寄存器高 4 位          |
+| :------------------: | :---------------: | :-------------: | :---------------------------------------: |
+| NVIC_PriorityGroup_0 |  0 级抢占优先级   | 0-15 级子优先级 | 0bit 用于抢占优先级     4bit 用于子优先级 |
 | NVIC_PriorityGroup_1 | 0-1 级抢占优先级  | 0-7 级子优先级  | 1bit 用于抢占优先级     3bit 用于子优先级 |
 | NVIC_PriorityGroup_2 | 0-3 级抢占优先级  | 0-3 级子优先级  | 2bit 用于抢占优先级     2bit 用于子优先级 |
 | NVIC_PriorityGroup_3 | 0-7 级抢占优先级  | 0-1 级子优先级  | 3bit 用于抢占优先级     1bit 用于子优先级 |
-| NVIC_PriorityGroup_4 | 0-15 级抢占优先级 | 0 级子优先级    | 4bit 用于抢占优先级     0bit 用于子优先级 |
+| NVIC_PriorityGroup_4 | 0-15 级抢占优先级 |  0 级子优先级   | 4bit 用于抢占优先级     0bit 用于子优先级 |
 
-在HAL_Init中通过调用函数`HAL_NVIC_SetPriorityGrouping(NVIC_PRIORITYGROUP_4 )`即可完成设置
+在HAL_Init中通过调用函数`HAL_NVIC_SetPriorityGrouping(NVIC_PRIORITYGROUP_4)`即可完成设置
 
 ## 中断优先级分组设置
 
@@ -379,8 +379,8 @@ static portFORCE_INLINE void vPortRaiseBASEPRI( void )
         isb
     }
 }
-#define configMAX_SYSCALL_INTERRUPT_PRIORITY            ( configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY << (8 - configPRIO_BITS) )
-#define configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY        5      /* FreeRTOS可管理的最高中断优先级 */
+#define configMAX_SYSCALL_INTERRUPT_PRIORITY ( configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY << (8 - configPRIO_BITS) )
+#define configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY     5   /* FreeRTOS可管理的最高中断优先级 */
 ```
 
 中断优先级在5 ~ 15的全部被关闭
@@ -429,10 +429,10 @@ FreeRTOS中断管理就是利用BASEPRI寄存器实现的
 
 FreeRTOS 在进入临界段代码的时候需要关闭中断, 当处理完临界段代码以后再打开中断
 
-| 函数                          | 描述             |
-| ----------------------------- | ---------------- |
-| taskENTER_CRITICAL()          | 任务级进入临界段 |
-| taskEXIT_CRITICAL()           | 任务级退出临界段 |
+|             函数              |       描述       |
+| :---------------------------: | :--------------: |
+|     taskENTER_CRITICAL()      | 任务级进入临界段 |
+|      taskEXIT_CRITICAL()      | 任务级退出临界段 |
 | taskENTER_CRITICAL_FROM_ISR() | 中断级进入临界段 |
 | taskEXIT_CRITICAL_FROM_ISR()  | 中断级退出临界段 |
 
@@ -467,8 +467,8 @@ taskEXIT_CRITICAL_FROM_ISR(save_status );
 
 挂起任务调度器,  调用此函数不需要关闭中断
 
-| 函数              | 描述           |
-| ----------------- | -------------- |
+|       函数        |      描述      |
+| :---------------: | :------------: |
 | vTaskSuspendAll() | 挂起任务调度器 |
 | xTaskResumeAll()  | 恢复任务调度器 |
 
@@ -515,11 +515,11 @@ xTaskResumeAll();
 ```c
 typedef struct xLIST
 {
-    listFIRST_LIST_INTEGRITY_CHECK_VALUE            /* 校验值 */
-    volatile UBaseType_t uxNumberOfItems;            /* 列表中的列表项数量 */
-    ListItem_t *configLIST_VOLATILE pxIndex        /* 用于遍历列表项的指针 */
+    listFIRST_LIST_INTEGRITY_CHECK_VALUE               /* 校验值 */
+    volatile UBaseType_t uxNumberOfItems;              /* 列表中的列表项数量 */
+    ListItem_t *configLIST_VOLATILE pxIndex            /* 用于遍历列表项的指针 */
     MiniListItem_t xListEnd                            /* 末尾列表项 */
-    listSECOND_LIST_INTEGRITY_CHECK_VALUE            /* 校验值 */
+    listSECOND_LIST_INTEGRITY_CHECK_VALUE              /* 校验值 */
 } List_t;
 ```
 
@@ -543,8 +543,8 @@ struct xLIST_ITEM
     struct xLIST_ITEM *configLIST_VOLATILE pxNext            /* 下一个列表项 */
     struct xLIST_ITEM *configLIST_VOLATILE pxPrevious        /* 上一个列表项 */
     void *pvOwner                                            /* 此列表项的任务控制块 */
-    struct xLIST *configLIST_VOLATILE pxContainer;             /* 列表项所在列表 */
-    listSECOND_LIST_ITEM_INTEGRITY_CHECK_VALUE                /* 用于检测列表项的数据完整性 */
+    struct xLIST *configLIST_VOLATILE pxContainer;           /* 列表项所在列表 */
+    listSECOND_LIST_ITEM_INTEGRITY_CHECK_VALUE               /* 用于检测列表项的数据完整性 */
 };
 typedef struct xLIST_ITEM ListItem_t;
 ```
@@ -566,7 +566,7 @@ struct xMINI_LIST_ITEM
     listFIRST_LIST_ITEM_INTEGRITY_CHECK_VALUE                 /* 用于检测数据完整性 */
     configLIST_VOLATILE TickType_t xItemValue;                /* 列表项的值 */
     struct xLIST_ITEM *configLIST_VOLATILE pxNext;            /* 上一个列表项 */
-    struct xLIST_ITEM *configLIST_VOLATILE pxPrevious;     /* 下一个列表项 */
+    struct xLIST_ITEM *configLIST_VOLATILE pxPrevious;        /* 下一个列表项 */
 };
 typedef struct xMINI_LIST_ITEM MiniListItem_t;
 ```
@@ -579,13 +579,13 @@ typedef struct xMINI_LIST_ITEM MiniListItem_t;
 
 ## 列表相关API函数介绍
 
-| 函数                  | 描述               |
-| --------------------- | ------------------ |
-| vListInitialise()     | 初始化列表         |
-| vListInitialiseItem() | 初始化列表项       |
-| vListInsertEnd()      | 列表末尾插入列表项 |
-| vListInsert()         | 列表插入列表项     |
-| uxListRemove()        | 列表移除列表项     |
+|         函数          |        描述        |
+| :-------------------: | :----------------: |
+|   vListInitialise()   |     初始化列表     |
+| vListInitialiseItem() |    初始化列表项    |
+|   vListInsertEnd()    | 列表末尾插入列表项 |
+|     vListInsert()     |   列表插入列表项   |
+|    uxListRemove()     |   列表移除列表项   |
 
 ### 初始化列表vListInitialise()
 
@@ -607,8 +607,8 @@ void vListInitialise(List_t *const pxList)
 }
 ```
 
-| 形参   | 描述         |
-| ------ | ------------ |
+|  形参  |     描述     |
+| :----: | :----------: |
 | pxList | 待初始化列表 |
 
 初始化后列表结构: 
@@ -628,8 +628,8 @@ void vListInitialiseItem( ListItem_t *const pxItem )
 }
 ```
 
-| 形参   | 描述           |
-| ------ | -------------- |
+|  形参  |      描述      |
+| :----: | :------------: |
 | pxItem | 待初始化列表项 |
 
 初始化后的列表项结构: 
@@ -640,9 +640,9 @@ void vListInitialiseItem( ListItem_t *const pxItem )
 
 此函数用于将待插入列表的列表项按照列表项值升序进行排序, 有序地插入到列表中 
 
-| 形参          | 描述         |
-| ------------- | ------------ |
-| pxList        | 列表         |
+|     形参      |     描述     |
+| :-----------: | :----------: |
+|    pxList     |     列表     |
 | pxNewListItem | 待插入列表项 |
 
 ```c
@@ -692,9 +692,9 @@ void vListInsertEnd(List_t *const pxList, ListItem_t *const pxNewListItem)
 }
 ```
 
-| 形参          | 描述         |
-| ------------- | ------------ |
-| pxList        | 列表         |
+|     形参      |     描述     |
+| :-----------: | :----------: |
+|    pxList     |     列表     |
 | pxNewListItem | 待插入列表项 |
 
 此函数用于将待插入列表的列表项插入到列表 pxIndex 指针指向的列表项前面, 是一种无序的插入方法 
@@ -707,13 +707,13 @@ UBaseType_t uxListRemove (ListItem_t* const pxItemToRemove);
 
 此函数用于将列表项从列表项所在列表中移除
 
-| 形参           | 描述           |
-| -------------- | -------------- |
+|      形参      |      描述      |
+| :------------: | :------------: |
 | pxItemToRemove | 待移除的列表项 |
 
-| 返回值 | 描述                                         |
-| ------ | -------------------------------------------- |
-| 整数   | 待移除列表项移除后, 所在列表剩余列表项的数量 |
+| 返回值 |                     描述                     |
+| :----: | :------------------------------------------: |
+|  整数  | 待移除列表项移除后, 所在列表剩余列表项的数量 |
 
 ```c
 UBaseType_t uxListRemove( ListItem_t *const pxItemToRemove )
@@ -836,11 +836,11 @@ CM3 允许向量表重定位——从其它地址处开始定位各异常向量 
 
 而EXC_RETURN 只有 6 个合法的值 (M4、M7) , 如下表所示:  
 
-| 描述                                 | 使用浮点单元 | 未使用浮点单元 |
-| ------------------------------------ | ------------ | -------------- |
-| 中断返回后进入Hamdler模式, 并使用MSP | 0xFFFFFFE1   | 0xFFFFFFF1     |
-| 中断返回后进入线程模式, 并使用 MSP   | 0xFFFFFFE9   | 0xFFFFFFF9     |
-| 中断返回后进入线程模式, 并使用 PSP   | 0xFFFFFFED   | 0xFFFFFFFD     |
+|                 描述                 | 使用浮点单元 | 未使用浮点单元 |
+| :----------------------------------: | :----------: | :------------: |
+| 中断返回后进入Hamdler模式, 并使用MSP |  0xFFFFFFE1  |   0xFFFFFFF1   |
+|  中断返回后进入线程模式, 并使用 MSP  |  0xFFFFFFE9  |   0xFFFFFFF9   |
+|  中断返回后进入线程模式, 并使用 PSP  |  0xFFFFFFED  |   0xFFFFFFFD   |
 
 ## 出栈/压栈汇编指令详解
 
@@ -961,19 +961,19 @@ bx r14
 
 ## 任务相关API函数介绍
 
-| **函数**                      | **描述**                       |
-| ----------------------------- | ------------------------------ |
-| uxTaskPriorityGet()           | 获取任务优先级                 |
-| vTaskPrioritySet()            | 设置任务优先级                 |
-| uxTaskGetNumberOfTasks()      | 获取系统中任务的数量           |
-| uxTaskGetSystemState()        | 获取所有任务状态信息           |
-| vTaskGetInfo()                | 获取指定单个的任务信息         |
-| xTaskGetCurrentTaskHandle()   | 获取当前任务的任务句柄         |
-| xTaskGetHandle()              | 根据任务名获取该任务的任务句柄 |
+|             函数              |              描述              |
+| :---------------------------: | :----------------------------: |
+|      uxTaskPriorityGet()      |         获取任务优先级         |
+|      vTaskPrioritySet()       |         设置任务优先级         |
+|   uxTaskGetNumberOfTasks()    |      获取系统中任务的数量      |
+|    uxTaskGetSystemState()     |      获取所有任务状态信息      |
+|        vTaskGetInfo()         |     获取指定单个的任务信息     |
+|  xTaskGetCurrentTaskHandle()  |     获取当前任务的任务句柄     |
+|       xTaskGetHandle()        | 根据任务名获取该任务的任务句柄 |
 | uxTaskGetStackHighWaterMark() | 获取任务的任务栈历史剩余最小值 |
-| eTaskGetState()               | 获取任务状态                   |
-| vTaskList()                   | 以`表格`形式获取所有任务的信息 |
-| vTaskGetRunTimeStats()        | 获取任务的运行时间             |
+|        eTaskGetState()        |          获取任务状态          |
+|          vTaskList()          | 以`表格`形式获取所有任务的信息 |
+|    vTaskGetRunTimeStats()     |       获取任务的运行时间       |
 
 ```c
 UBaseType_t uxTaskPriorityGet(const TaskHandle_t xTask)
@@ -1033,15 +1033,15 @@ UBaseType_t uxTaskGetSystemState(TaskStatus_t *const pxTaskStatusArray, const UB
 ```c
 typedef struct xTASK_STATUS
 {
-    TaskHandle_t             xHandle;                               /* 任务句柄 */ 
-    const char *                 pcTaskName;                        /* 任务名 */ 
-    UBaseType_t            xTaskNumber;                             /* 任务编号 */ 
-    eTaskState e                CurrentState;                      /* 任务状态 */ 
-    UBaseType_t             uxCurrentPriority;                   /* 任务优先级 */ 
-    UBaseType_t             uxBasePriority;                     /* 任务原始优先级*/ 
-    configRUN_TIME_COUNTER_TYPE     ulRunTimeCounter;             /* 任务运行时间*/
-    StackType_t *             pxStackBase;                        /* 任务栈基地址 */ 
-    configSTACK_DEPTH_TYPE     usStackHighWaterMark;                  /* 任务栈历史剩余最小值 */ 
+    TaskHandle_t                 xHandle;                      /* 任务句柄 */ 
+    const char *                 pcTaskName;                   /* 任务名 */ 
+    UBaseType_t                  xTaskNumber;                  /* 任务编号 */ 
+    eTaskState e                 CurrentState;                 /* 任务状态 */ 
+    UBaseType_t                  uxCurrentPriority;            /* 任务优先级 */ 
+    UBaseType_t                  uxBasePriority;               /* 任务原始优先级*/ 
+    configRUN_TIME_COUNTER_TYPE  ulRunTimeCounter;             /* 任务运行时间*/
+    StackType_t *                pxStackBase;                  /* 任务栈基地址 */ 
+    configSTACK_DEPTH_TYPE       usStackHighWaterMark;         /* 任务栈历史剩余最小值 */ 
 } TaskStatus_t;
 ```
 
@@ -1061,11 +1061,11 @@ void vTaskGetInfo(TaskHandle_t xTask, TaskStatus_t *pxTaskStatus, BaseType_t xGe
 ```c
 typedef enum
 {   
-    eRunning = 0,    /* 运行态 */ 
-    eReady            /* 就绪态 */ 
-    eBlocked,         /* 阻塞态 */ 
+    eRunning = 0,   /* 运行态 */ 
+    eReady          /* 就绪态 */ 
+    eBlocked,       /* 阻塞态 */ 
     eSuspended,     /* 挂起态 */ 
-    eDeleted,         /* 任务被删除 */ 
+    eDeleted,       /* 任务被删除 */ 
     eInvalid        /* 无效 */ 
 } eTaskState;
 ```
@@ -1228,7 +1228,7 @@ FreeRTOS基于队列， 实现了多种功能，其中包括队列集、互斥�
 
 > 在创建队列时，就要指定队列长度以及队列项目的大小！
 
-### FreeRTOS队列特点：
+### 队列特点：
 
 1. 数据入队出队方式    队列通常采用“先进先出”(FIFO)的数据存储缓冲机制，即先入队的数据会先从队列中被读取，FreeRTOS中也可以配置为“后进先出”LIFO方式；
 
@@ -1510,12 +1510,12 @@ BaseType_t xQueuePeek(QueueHandle_t xQueue, void *const pvBuffer, TickType_t xTi
 ```c
 #define xSemaphoreCreateBinary() xQueueGenericCreate(1,semSEMAPHORE_QUEUE_ITEM_LENGTH,queueQUEUE_TYPE_BINARY_SEMAPHORE)
 #define semSEMAPHORE_QUEUE_ITEM_LENGTH ((uint8_t)0U)
-#define queueQUEUE_TYPE_BASE                              ( ( uint8_t ) 0U )    /* 队列 */
-#define queueQUEUE_TYPE_SET                              ( ( uint8_t ) 0U )    /* 队列集 */
-#define queueQUEUE_TYPE_MUTEX                             ( ( uint8_t ) 1U )    /* 互斥信号量 */
-#define queueQUEUE_TYPE_COUNTING_SEMAPHORE                ( ( uint8_t ) 2U )    /* 计数型信号量 */
-#define queueQUEUE_TYPE_BINARY_SEMAPHORE                 (( uint8_t ) 3U )    /* 二值信号量 */
-#define queueQUEUE_TYPE_RECURSIVE_MUTEX                   ( ( uint8_t ) 4U )    /* 递归互斥信号量 */
+#define queueQUEUE_TYPE_BASE                           ( ( uint8_t ) 0U )    /* 队列 */
+#define queueQUEUE_TYPE_SET                            ( ( uint8_t ) 0U )    /* 队列集 */
+#define queueQUEUE_TYPE_MUTEX                          ( ( uint8_t ) 1U )    /* 互斥信号量 */
+#define queueQUEUE_TYPE_COUNTING_SEMAPHORE             ( ( uint8_t ) 2U )    /* 计数型信号量 */
+#define queueQUEUE_TYPE_BINARY_SEMAPHORE               ( ( uint8_t ) 3U )    /* 二值信号量 */
+#define queueQUEUE_TYPE_RECURSIVE_MUTEX                ( ( uint8_t ) 4U )    /* 递归互斥信号量 */
 ```
 
 | 返回值 |             描述             |
@@ -1900,9 +1900,7 @@ EventBits_t xEventGroupSync(EventGroupHandle_t xEventGroup,
 | 等待的事件标志位值 |  等待事件标志位成功，返回等待到的事件标志位  |
 |       其他值       | 等待事件标志位失败，返回事件组中的事件标志位 |
 
-例子: Task1：做饭    Task2：做菜, Task1做好自己的事之后，需要等待菜也做好，大家在一起吃饭。
-
-> 特点：同步！
+例子: Task1：做饭    Task2：做菜, Task1做好自己的事之后，需要等待菜也做好，大家在一起吃饭。`同步！`
 
 # 任务通知
 
@@ -2006,10 +2004,10 @@ typedef struct tskTaskControlBlock
 ```c
 #define xTaskNotifyAndQuery(xTaskToNotify,ulValue,eAction,pulPreviousNotifyValue)\
 xTaskGenericNotify( ( xTaskToNotify ), 
-                   ( tskDEFAULT_INDEX_TO_NOTIFY ), 
-                   ( ulValue ), 
-                   ( eAction ),
-                   ( pulPreviousNotifyValue ) )
+                    ( tskDEFAULT_INDEX_TO_NOTIFY ), 
+                    ( ulValue ), 
+                    ( eAction ),
+                    ( pulPreviousNotifyValue ) )
 ```
 
 ```c
@@ -2023,11 +2021,11 @@ xTaskGenericNotify((xTaskToNotify),(tskDEFAULT_INDEX_TO_NOTIFY),(0),eIncrement,N
 ```
 
 ```c
-BaseType_t  xTaskGenericNotify( TaskHandle_t xTaskToNotify,
-                                UBaseType_t     uxIndexToNotify,
+BaseType_t  xTaskGenericNotify( TaskHandle_t     xTaskToNotify,
+                                UBaseType_t      uxIndexToNotify,
                                 uint32_t         ulValue,
-                                eNotifyAction     eAction,
-                                uint32_t *         pulPreviousNotificationValue  )
+                                eNotifyAction    eAction,
+                                uint32_t *       pulPreviousNotificationValue  )
 ```
 
 |             形参             |                    描述                     |
@@ -2043,11 +2041,11 @@ BaseType_t  xTaskGenericNotify( TaskHandle_t xTaskToNotify,
 ```c
 typedef enum
 {    
-    eNoAction = 0,             /* 无操作 */
-    eSetBits                /* 更新指定bit */
-    eIncrement                /* 通知值加一 */
-     eSetValueWithOverwrite        /* 覆写的方式更新通知值 */
-    eSetValueWithoutOverwrite    /* 不覆写通知值 */
+    eNoAction = 0,                /* 无操作 */
+    eSetBits                      /* 更新指定bit */
+    eIncrement                    /* 通知值加一 */
+    eSetValueWithOverwrite        /* 覆写的方式更新通知值 */
+    eSetValueWithoutOverwrite     /* 不覆写通知值 */
 } eNotifyAction;
 ```
 
@@ -2097,11 +2095,11 @@ xTaskGenericNotifyWait(     tskDEFAULT_INDEX_TO_NOTIFY,     \
 此函数用于获取通知值和清除通知值的指定位值，适用于模拟队列和事件标志组，使用该函数来获取任务通知 。 
 
 ```c
-BaseType_t    xTaskGenericNotifyWait(     UBaseType_t     uxIndexToWaitOn,
-                        uint32_t         ulBitsToClearOnEntry,
-                        uint32_t         ulBitsToClearOnExit,
-                        uint32_t *         pulNotificationValue,
-                        TickType_t         xTicksToWait        ); 
+BaseType_t    xTaskGenericNotifyWait( UBaseType_t     uxIndexToWaitOn,
+                                      uint32_t         ulBitsToClearOnEntry,
+                                      uint32_t         ulBitsToClearOnExit,
+                                      uint32_t *       pulNotificationValue,
+                                      TickType_t       xTicksToWait        ); 
 ```
 
 |         形参          |                         描述                          |
@@ -2212,19 +2210,19 @@ FreeRTOS 提供了两种软件定时器:
 ```c
 typedef    struct
 {
-    const char *                     pcTimerName        /* 软件定时器名字 */
+    const char *                       pcTimerName           /* 软件定时器名字 */
     ListItem_t                         xTimerListItem        /* 软件定时器列表项 */
-    TickType_t                         xTimerPeriodInTicks;            /* 软件定时器的周期 */     
-    void *                             pvTimerID            /* 软件定时器的ID */
-    TimerCallbackFunction_t             pxCallbackFunction;     /* 软件定时器的回调函数 */
-    #if ( configUSE_TRACE_FACILITY == 1 )
-     UBaseType_t                     uxTimerNumber        /*  软件定时器的编号，调试用  */
-    #endif
-    uint8_t                         ucStatus;            /*  软件定时器的状态  */
+    TickType_t                         xTimerPeriodInTicks;  /* 软件定时器的周期 */     
+    void *                             pvTimerID             /* 软件定时器的ID */
+    TimerCallbackFunction_t             pxCallbackFunction;  /* 软件定时器的回调函数 */
+#if ( configUSE_TRACE_FACILITY == 1 )
+ UBaseType_t                     uxTimerNumber               /*  软件定时器的编号，调试用  */
+#endif
+    uint8_t                         ucStatus;                /*  软件定时器的状态  */
 } xTIMER;
 ```
 
-## FreeRTOS软件定时器相关API函数
+## 软件定时器相关API函数
 
 |            函数             |             描述             |
 | :-------------------------: | :--------------------------: |
@@ -2242,11 +2240,11 @@ typedef    struct
 ### 创建软件定时器API函数
 
 ```c
-TimerHandle_t   xTimerCreate(     const char * const             pcTimerName,
-                                const TickType_t             xTimerPeriodInTicks,
-                                const UBaseType_t             uxAutoReload,
-                                void * const                 pvTimerID,
-                                TimerCallbackFunction_t     pxCallbackFunction  ); 
+TimerHandle_t   xTimerCreate(     const char * const           pcTimerName,
+                                  const TickType_t             xTimerPeriodInTicks,
+                                  const UBaseType_t            uxAutoReload,
+                                  void * const                 pvTimerID,
+                                  TimerCallbackFunction_t      pxCallbackFunction  ); 
 ```
 
 |        形参         |                         描述                          |
@@ -2265,7 +2263,7 @@ TimerHandle_t   xTimerCreate(     const char * const             pcTimerName,
 ### 开启软件定时器API函数
 
 ```c
-BaseType_t xTimerStart( TimerHandle_t     xTimer,
+BaseType_t xTimerStart( TimerHandle_t        xTimer,
                         const TickType_t     xTicksToWait); 
 ```
 
@@ -2282,7 +2280,7 @@ BaseType_t xTimerStart( TimerHandle_t     xTimer,
 ### 停止软件定时器API函数
 
 ```c
-BaseType_t xTimerStop(    TimerHandle_t     xTimer,
+BaseType_t xTimerStop(  TimerHandle_t        xTimer,
                         const TickType_t     xTicksToWait); 
 ```
 
@@ -2299,15 +2297,15 @@ BaseType_t xTimerStop(    TimerHandle_t     xTimer,
 ### 复位软件定时器API函数
 
 ```c
-BaseType_t xTimerReset( TimerHandle_t     xTimer,
+BaseType_t xTimerReset( TimerHandle_t        xTimer,
                         const TickType_t     xTicksToWait); 
 ```
 
 该功能将使软件定时器的重新开启定时，复位后的软件定时器以复位时的时刻作为开启时刻重新定时
 
-| 形参        | 描述                                       |
-| ----------- | ------------------------------------------ |
-| xTimer      | 待复位的软件定时器的句柄                   |
+|    形参     |                    描述                    |
+| :---------: | :----------------------------------------: |
+|   xTimer    |          待复位的软件定时器的句柄          |
 | xTickToWait | 发送命令到软件定时器命令队列的最大等待时间 |
 
 | 返回值 |        描述        |
@@ -2318,9 +2316,9 @@ BaseType_t xTimerReset( TimerHandle_t     xTimer,
 ### 更改软件定时器超时时间API函数
 
 ```c
-BaseType_t xTimerChangePeriod( TimerHandle_t         xTimer,
-                                 const TickType_t     xNewPeriod,
-                                  const TickType_t     xTicksToWait); 
+BaseType_t xTimerChangePeriod( TimerHandle_t        xTimer,
+                               const TickType_t     xNewPeriod,
+                               const TickType_t     xTicksToWait); 
 ```
 
 |    形参     |                    描述                    |
