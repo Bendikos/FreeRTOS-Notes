@@ -88,7 +88,7 @@ BaseType_t xTaskCreate
     const char *const             pcName,         /* 任务名字, 最大长度configMAX_TASK_NAME_LEN */
     const configSTACK_DEPTH_TYPE  usStackDepth,     /* 任务堆栈大小, 注意字为单位 */
     void *const                   pvParameters,    /* 传递给任务函数的参数 */
-    UBaseType_t           uxPriority,        /* 任务优先级, 范围: 0 ~ configMAX_PRIORITIES - 1 */
+    UBaseType_t                   uxPriority,        /* 任务优先级, 范围: 0 ~ configMAX_PRIORITIES - 1 */
     TaskHandle_t *const           pxCreatedTask     /* 任务句柄, 就是任务的任务控制块*/
 );
 ```
