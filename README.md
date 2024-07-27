@@ -2567,7 +2567,7 @@ size_t xPortGetFreeHeapSize( void );
 
 初始化后的内存堆，如下：
 
-![初始化后的内存堆](../../../AppData/Roaming/Typora/typora-user-images/初始化后的内存堆.png)
+![初始化后的内存堆](picture/初始化后的内存堆.png)
 
 插入新的空闲内存块，如下
 
