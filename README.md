@@ -1570,28 +1570,38 @@ typedef struct SemaphoreData
 
 使用队列的主要流程：创建队列 -> 写队列 -> 读队列。
 
-创建队列相关API函数介绍：
+## 创建队列
 
-|         函数         |       描述       |
-| :------------------: | :--------------: |
-|    xQueueCreate()    | 动态方式创建队列 |
-| xQueueCreateStatic() | 静态方式创建队列 |
+**队列在使用前必须先创建**，和创建任务类似， FreeRTOS 也提供了动态或静态内存分配创建队列两个 API 函数，具体函数声明如下所示
 
-动态和静态创建队列之间的区别：队列所需的内存空间由 FreeRTOS 从 FreeRTOS 管理的堆中分配，而静态创建需要用户自行分配内存。
+```c
+/**
+  * @brief  动态分配内存创建队列函数
+  * @param  uxQueueLength：队列深度
+  * @param  uxItemSize：队列中数据单元的长度，以字节为单位
+  * @retval 返回创建成功的队列句柄，如果返回NULL则表示因内存不足创建失败
+  */
+QueueHandle_t xQueueCreate(UBaseType_t uxQueueLength, UBaseType_t uxItemSize);
+ 
+/**
+  * @brief  静态分配内存创建队列函数
+  * @param  uxQueueLength：队列深度
+  * @param  uxItemSize：队列中数据单元的长度，以字节为单位
+  * @param  pucQueueStorageBuffer：队列栈空间数组
+  * @param  pxQueueBuffer：指向StaticQueue_t类型的用于保存队列数据结构的变量
+  * @retval 返回创建成功的队列句柄，如果返回NULL则表示因内存不足创建失败
+  */
+QueueHandle_t xQueueCreateStatic(UBaseType_t uxQueueLength,
+								 UBaseType_t uxItemSize,
+								 uint8_t *pucQueueStorageBuffer,
+								 StaticQueue_t *pxQueueBuffer);
+ 
+/*example：创建一个队列长度为5，队列项目的大小为2字节的队列*/
+QueueHandle_t QueueHandleTest;
+QueueHandleTest = xQueueCreate(5, sizeof(uint16_t));
+```
 
 ![动态方式创建队列函数](picture/动态方式创建队列函数.png)
-
-此函数用于动态方式创建队列
-
-|     形参      |      描述      |
-| :-----------: | :------------: |
-| uxQueueLength |    队列长度    |
-|  uxItemSize   | 队列项目的大小 |
-
-| 返回值 |            描述            |
-| :----: | :------------------------: |
-|  NULL  |        队列创建失败        |
-| 其他值 | 队列创建成功，返回队列句柄 |
 
 前面说 FreeRTOS 基于队列实现了多种功能，每一种功能对应一种队列类型，队列类型的 queue.h 文件中有定义：
 
@@ -1604,24 +1614,78 @@ typedef struct SemaphoreData
 #define queueQUEUE_TYPE_RECURSIVE_MUTEX               ( ( uint8_t ) 4U )    /* 递归互斥信号量 */
 ```
 
-往队列写入消息API函数：
+## 向队列写入数据
 
-|            函数            |                       描述                       |
-| :------------------------: | :----------------------------------------------: |
-|        xQueueSend()        |               往队列的尾部写入消息               |
-|     xQueueSendToBack()     |                 同 xQueueSend()                  |
-|    xQueueSendToFront()     |               往队列的头部写入消息               |
-|     xQueueOverwrite()      |    覆写队列消息（只用于队列长度为 1  的情况）    |
-|    xQueueSendFromISR()     |           在中断中往队列的尾部写入消息           |
-| xQueueSendToBackFromISR()  |              同 xQueueSendFromISR()              |
-| xQueueSendToFrontFromISR() |           在中断中往队列的头部写入消息           |
-|  xQueueOverwriteFromISR()  | 在中断中覆写队列消息（只用于队列长度为 1  的情况 |
+**任务或者中断向队列写入数据称为发送消息**。通常情况下，队列被作为 FIFO（先入先出）使用，即数据由队列尾部进入，从队列首读出，当然可以通过更改写入方式将队列作为 LIFO（后入先出）使用，向队列中写入数据主要有三组 FreeRTOS API 函数，具体如下所示
+
+```c
+/**
+  * @brief  向队列后方发送数据（FIFO先入先出）
+  * @param  xQueue：要写入数据的队列句柄
+  * @param  pvItemToQueue：要写入的数据
+  * @param  xTicksToWait：阻塞超时时间，单位为节拍数，portMAXDELAY表示无限等待
+  * @retval pdPASS：数据发送成功，errQUEUE_FULL：队列满无法写入
+  */
+BaseType_t xQueueSend(QueueHandle_t xQueue,
+					  const void * pvItemToQueue,
+					  TickType_t xTicksToWait);
+ 
+/**
+  * @brief  向队列后方发送数据（FIFO先入先出），与xQueueSend()函数一致
+  */
+BaseType_t xQueueSendToBack(QueueHandle_t xQueue,
+							const void * pvItemToQueue,
+							TickType_t xTicksToWait);
+ 
+/**
+  * @brief  向队列前方发送数据（LIFO后入先出）
+  */
+BaseType_t xQueueSendToFront(QueueHandle_t xQueue,
+							 const void * pvItemToQueue,
+							 TickType_t xTicksToWait);
+ 
+/**
+  * @brief  以下三个函数为上述三个函数的中断安全版本
+  * @param  pxHigherPriorityTaskWoken：用于通知应用程序编写者是否应该执行上下文切换
+  */
+BaseType_t xQueueSendFromISR(QueueHandle_t xQueue,
+							 const void *pvItemToQueue,
+							 BaseType_t *pxHigherPriorityTaskWoken);
+ 
+BaseType_t xQueueSendToBackFromISR(QueueHandle_t xQueue,
+								   const void *pvItemToQueue,
+								   BaseType_t *pxHigherPriorityTaskWoken)
+ 
+BaseType_t xQueueSendToFrontFromISR(QueueHandle_t xQueue,
+									const void *pvItemToQueue,
+									BaseType_t *pxHigherPriorityTaskWoken);
+```
+
+另外还有一组稍微特殊的向队列写入数据的 FreeRTOS API 函数，这组函数只用于队列长度为 1 的队列，在队列已满时会覆盖掉队列原来的数据，具体如下所述
+
+```c
+/**
+  * @brief  向长度为1的队发送数据
+  * @param  xQueue：要写入数据的队列句柄
+  * @param  pvItemToQueue：要写入的数据
+  * @retval pdPASS：数据发送成功，errQUEUE_FULL：队列满无法写入
+  */
+BaseType_t xQueueOverwrite(QueueHandle_t xQueue, const void *pvItemToQueue);
+ 
+/**
+  * @brief  以下函数为上述函数的中断安全版本
+  * @param  pxHigherPriorityTaskWoken：用于通知应用程序编写者是否应该执行上下文切换
+  */
+BaseType_t xQueueOverwriteFromISR(QueueHandle_t xQueue,
+								  const void *pvItemToQueue,
+								  BaseType_t *pxHigherPriorityTaskWoken);
+```
 
 队列写入消息
 
 ![队列写入消息](picture/队列写入消息.png)
 
-可以看到这几个写入函数调用的是同一个函数`xQueueGenericSend( )`，只是指定了不同的写入位置！ 
+这几个写入函数调用的是同一个函数`xQueueGenericSend()`，只是指定了不同的写入位置！ 
 
 队列一共有 3 种写入位置 ：
 
@@ -1631,77 +1695,115 @@ typedef struct SemaphoreData
 #define queueOVERWRITE                            ( ( BaseType_t ) 2 )        /* 覆写队列*/
 ```
 
-注意：覆写方式写入队列，只有在队列的队列长度为 1 时，才能够使用 
+## 从队列接收数据
 
-往队列写入消息函数入口参数解析：
-
-```c
-BaseType_t        xQueueGenericSend(  QueueHandle_t     xQueue,                       
-                                    const void * const     pvItemToQueue,
-                                    TickType_t         xTicksToWait,
-                                    const BaseType_t     xCopyPosition   ); 
-```
-
-|     形参      |     描述     |
-| :-----------: | :----------: |
-|    xQueue     | 待写入的队列 |
-| pvItemToQueue |  待写入消息  |
-| xTicksToWait  | 阻塞超时时间 |
-| xCopyPosition |  写入的位置  |
-
-|    返回值     |     描述     |
-| :-----------: | :----------: |
-|    pdTRUE     | 队列写入成功 |
-| errQUEUE_FULL | 队列写入失败 |
-
-从队列读取消息API函数：
-
-|          函数          |                  描述                  |
-| :--------------------: | :------------------------------------: |
-|    xQueueReceive()     |     从队列头部读取消息，并删除消息     |
-|      xQueuePeek()      |           从队列头部读取消息           |
-| xQueueReceiveFromISR() | 在中断中从队列头部读取消息，并删除消息 |
-|  xQueuePeekFromISR()   |       在中断中从队列头部读取消息       |
+**任务或者中断从队列中读取数据称为接收消息**。从队列中读取数据主要有两组 FreeRTOS API 函数，具体如下所示
 
 ```c
-BaseType_t xQueueReceive(QueueHandle_t xQueue, void * const pvBuffer, TickType_t xTicksToWait)
+/**
+  * @brief  从队列头部接收数据单元，接收的数据同时会从队列中删除
+  * @param  xQueue：被读队列句柄
+  * @param  pvBuffer：接收缓存指针
+  * @param  xTicksToWait：阻塞超时时间，单位为节拍数
+  * @retval pdPASS：数据接收成功，errQUEUE_FULL：队列空无读取到任何数据
+  */
+BaseType_t xQueueReceive(QueueHandle_t xQueue,
+						 void *pvBuffer,
+						 TickType_t xTicksToWait);
+ 
+/**
+  * @brief  从队列头部接收数据单元，不从队列中删除接收的单元
+  */
+BaseType_t xQueuePeek(QueueHandle_t xQueue,
+					  void *pvBuffer,
+					  TickType_t xTicksToWait);
+ 
+/**
+  * @brief  以下两个函数为上述两个函数的中断安全版本
+  * @param  pxHigherPriorityTaskWoken：用于通知应用程序编写者是否应该执行上下文切换
+  */
+BaseType_t xQueueReceiveFromISR(QueueHandle_t xQueue,
+								void *pvBuffer,
+								BaseType_t *pxHigherPriorityTaskWoken);
+ 
+BaseType_t xQueuePeekFromISR(QueueHandle_t xQueue, void *pvBuffer);
 ```
 
-此函数用于在任务中，从队列中读取消息，并且消息读取成功后，会将消息从队列中移除。
+## 查询队列
 
-|     形参     |      描述      |
-| :----------: | :------------: |
-|    xQueue    |  待读取的队列  |
-|   pvBuffer   | 信息读取缓冲区 |
-| xTicksToWait |  阻塞超时时间  |
-
-| 返回值  |   描述   |
-| :-----: | :------: |
-| pdTRUE  | 读取成功 |
-| pdFALSE | 读取失败 |
+FreeRTOS 还提供了一些用于查询队列当前有效数组单元个数和剩余可用空间数的 API 函数，具体如下所述
 
 ```c
-BaseType_t xQueuePeek(QueueHandle_t xQueue, void *const pvBuffer, TickType_t xTicksToWait)
+/**
+  * @brief  查询队列剩余可用空间数
+  * @param  xQueue：被查询的队列句柄
+  * @retval 返回队列中可用的空间数
+  */
+UBaseType_t uxQueueSpacesAvailable(QueueHandle_t xQueue);
+ 
+/**
+  * @brief  查询队列有效数据单元个数
+  * @param  xQueue：被查询的队列句柄
+  * @retval 当前队列中保存的数据单元个数
+  */
+UBaseType_t uxQueueMessagesWaiting(const QueueHandle_t xQueue);
+ 
+/**
+  * @brief  查询队列有效数据单元个数函数的中断安全版本
+  */
+UBaseType_t uxQueueMessagesWaitingFromISR(const QueueHandle_t xQueue);
 ```
 
-此函数用于在任务中，从队列中读取消息， 但与函数 xQueueReceive()不同，此函数在成功读取消息后，并不会移除已读取的消息！ 
+## 阻塞状态
 
-|     形参     |      描述      |
-| :----------: | :------------: |
-|    xQueue    |  待读取的队列  |
-|   pvBuffer   | 信息读取缓冲区 |
-| xTicksToWait |  阻塞超时时间  |
+当出现下面几种情况时，任务会进入阻塞状态
 
-| 返回值  |   描述   |
-| :-----: | :------: |
-| pdTRUE  | 读取成功 |
-| pdFALSE | 读取失败 |
+1. 当某个任务向队列写入数据，但是被写的队列已满时，任务将进入阻塞状态等待队列出现新的位置
+2. 当某个任务从队列读取数据，但是被读的队列是空时，任务将进入阻塞状态等待队列出现新的数据
+
+当出现下面几种情况时，任务会退出阻塞状态
+
+1. 进入阻塞状态的任务达到设置的阻塞超时时间之后会退出阻塞状态
+2. 向满队列中写数据的任务等到队列中出现新的位置
+3. 从空队列中读数据的任务等到队列.中出现新的数据
+
+当存在多个任务处于阻塞状态时，如果同时满足解除阻塞的条件，则所有等待任务中 **优先级最高的任务 或者 优先级均相同但等待最久的任务** 将被解除阻塞状态
+
+## 删除队列
+
+```c
+/**
+  * @brief  删除队列
+  * @param  pxQueueToDelete：要删除的队列句柄
+  * @retval None
+  */
+void vQueueDelete(QueueHandle_t pxQueueToDelete);
+```
+
+## 复位队列
+
+```c
+/**
+  * @brief  将队列重置为其原始空状态
+  * @param  xQueue：要复位的队列句柄
+  * @retval pdPASS（从FreeRTOS V7.2.0之后）
+  */
+BaseType_t xQueueReset(QueueHandle_t xQueue);
+```
+
+## 队列读写过程
+
+如下图展示了用作 FIFO 的队列写入和读取数据的情况的具体过程
+
+![队列读写过程](C:\Users\Administrator\Documents\GitHub\FreeRTOS-Notes\picture\队列读写过程.png)
 
 # 信号量
 
 ## 信号量的简介
 
-信号量是一种解决同步问题的机制，可以实现对共享资源的有序访问
+信号量是进程间用于通信的一种手段，其是基于队列实现的，信号量更适用于进程间同步，信号量包括二值信号量（Binary Semaphores）和计数信号量（Counting Semaphores）
+
+## 任务的同步和互斥
 
 《RTOS 中的同步与互斥》 在实时操作系统（RTOS）中，同步是不同任务之间或者任务与外部事件之间的协同工作方式，确保多个并发执行的任务按照预期的顺序或时机执行。同步涉及到线程或任务间的通信和协调机制，其目的在于避免数据竞争、解决竞态条件，并确保系统的正确行为。 而互斥则是指某一资源同时只允许一个访问者对其进行访问，具有唯一性和排它性。
 
@@ -1727,124 +1829,123 @@ BaseType_t xQueuePeek(QueueHandle_t xQueue, void *const pvBuffer, TickType_t xTi
 |                写入队列：当队列满时，可阻塞;                 | 释放信号量：不可阻塞，计数值++，  当计数值为最大值时，返回失败 |
 |               读取队列：当队列为空时，可阻塞;                |         获取信号量：计数值--，  当没有资源时，可阻塞         |
 
-## 二值信号量
+## 二值信号量和计数型信号量
 
-二值信号量的本质是一个队列长度为 1 的队列 ，该队列就只有空和满两种情况，这就是二值。 
+**二值信号量就是只有一个项的队列，该队列不为空则为满（所谓二值），二值信号量就像一个标志，适和用于进程间同步的通信** 
 
 二值信号量通常用于互斥访问或任务同步， 与互斥信号量比较类似，但是二值信号量有可能会导致优先级翻转的问题 ，所以二值信号量更适合用于同步！
 
 ![二值信号量操作过程](picture/二值信号量操作过程.png)
 
-使用二值信号量的过程：创建二值信号量 -> 释放二值信号量 -> 获取二值信号量    
+**计数信号量就是有固定长度的队列，队列中每个单元都是一个标志，其通常用于对多个共享资源的访问进行控制**
 
-|              函数              |            描述            |
-| :----------------------------: | :------------------------: |
-|    xSemaphoreCreateBinary()    | 使用动态方式创建二值信号量 |
-| xSemaphoreCreateBinaryStatic() | 使用静态方式创建二值信号量 |
-|        xSemaphoreGive()        |         释放信号量         |
-|    xSemaphoreGiveFromISR()     |     在中断中释放信号量     |
-|        xSemaphoreTake()        |         获取信号量         |
-|    xSemaphoreTakeFromISR()     |     在中断中获取信号量     |
+## 创建信号量
 
-创建二值信号量函数：`SemaphoreHandle_t  xSemaphoreCreateBinary(void)`
+**信号量在使用之前也必须先创建**，信号量被创建完之后是无效的，也即为 0 ，而由于信号量分为二值信号量和计数信号量两种，因此FreeRTOS也提供了不同的API函数，具体如下所述
 
 ```c
-#define xSemaphoreCreateBinary() xQueueGenericCreate(1,semSEMAPHORE_QUEUE_ITEM_LENGTH,queueQUEUE_TYPE_BINARY_SEMAPHORE)
-#define semSEMAPHORE_QUEUE_ITEM_LENGTH ((uint8_t)0U)
-#define queueQUEUE_TYPE_BASE                           ( ( uint8_t ) 0U )    /* 队列 */
-#define queueQUEUE_TYPE_SET                            ( ( uint8_t ) 0U )    /* 队列集 */
-#define queueQUEUE_TYPE_MUTEX                          ( ( uint8_t ) 1U )    /* 互斥信号量 */
-#define queueQUEUE_TYPE_COUNTING_SEMAPHORE             ( ( uint8_t ) 2U )    /* 计数型信号量 */
-#define queueQUEUE_TYPE_BINARY_SEMAPHORE               ( ( uint8_t ) 3U )    /* 二值信号量 */
-#define queueQUEUE_TYPE_RECURSIVE_MUTEX                ( ( uint8_t ) 4U )    /* 递归互斥信号量 */
+/**
+  * @brief  动态分配内存创建二值信号量函数
+  * @param  xSemaphore：创建的二值信号量句柄
+  * @retval None
+  */
+void vSemaphoreCreateBinary(SemaphoreHandle_t xSemaphore);
+ 
+/**
+  * @brief  静态分配内存创建二值信号量函数
+  * @param  pxSemaphoreBuffer：指向一个StaticSemaphore_t类型的变量，该变量将用于保存信号量的状态
+  * @retval 返回创建成功的信号量句柄，如果返回NULL则表示因为pxSemaphoreBuffer为空无法创建
+  */
+SemaphoreHandle_t xSemaphoreCreateBinaryStatic(
+									StaticSemaphore_t *pxSemaphoreBuffer);
+ 
+/**
+  * @brief  动态分配内存创建计数信号量函数
+  * @param  uxMaxCount：可以达到的最大计数值
+  * @param  uxInitialCount：创建信号量时分配给信号量的计数值
+  * @retval 返回创建成功的信号量句柄，如果返回NULL则表示内存不足无法创建
+  */
+SemaphoreHandle_t xSemaphoreCreateCounting(UBaseType_t uxMaxCount, 
+										   UBaseType_t uxInitialCount);
+ 
+/**
+  * @brief  静态分配内存创建计数信号量函数
+  * @param  uxMaxCount：可以达到的最大计数值
+  * @param  uxInitialCount：创建信号量时分配给信号量的计数值
+  * @param  pxSempahoreBuffer：指向StaticSemaphore_t类型的变量，该变量然后用于保存信号量的数据结构体
+  * @retval 返回创建成功的信号量句柄，如果返回NULL则表示因为pxSemaphoreBuffer为空无法创建
+  */
+SemaphoreHandle_t xSemaphoreCreateCountingStatic(
+									UBaseType_t uxMaxCount,
+									UBaseType_t uxInitialCount,
+									StaticSemaphore_t pxSempahoreBuffer);
 ```
 
-| 返回值 |             描述             |
-| :----: | :--------------------------: |
-|  NULL  |           创建失败           |
-| 其他值 | 创建成功返回二值信号量的句柄 |
+## 释放信号量
 
-释放二值信号量函数：`BaseType_t xSemaphoreGive(xSemaphore)`
+以下两个函数不仅仅可以用于释放二值信号量，还可以用于释放计数信号量和互斥量，具体如下所示
 
 ```c
-#define xSemaphoreGive(xSemaphore) xQueueGenericSend((QueueHandle_t)(xSemaphore),NULL,semGIVE_BLOCK_TIME, queueSEND_TO_BACK)
-#define semGIVE_BLOCK_TIME ((TickType_t)0U)
+/**
+  * @brief  释放信号量函数
+  * @param  xSemaphore：要释放的信号量的句柄
+  * @retval 如果信号量释放成功，则返回pdTRUE；如果发生错误，则返回pdFALSE
+  */
+BaseType_t xSemaphoreGive(SemaphoreHandle_t xSemaphore);
+ 
+/**
+  * @brief  释放信号量的中断安全版本函数
+  * @param  pxHigherPriorityTaskWoken：用于通知应用程序编写者是否应该执行上下文切换
+  * @retval 如果成功给出信号量，则返回pdTRUE，否则errQUEUE_FULL
+  */
+BaseType_t xSemaphoreGiveFromISR(SemaphoreHandle_t xSemaphore, 
+								 BaseType_t *pxHigherPriorityTaskWoken);
 ```
 
-|    形参    |        描述        |
-| :--------: | :----------------: |
-| xSemaphore | 要释放的信号量句柄 |
-
-|    返回值     |      描述      |
-| :-----------: | :------------: |
-|    pdPASS     | 释放信号量成功 |
-| errQUEUE_FULL | 释放信号量失败 |
-
-获取二值信号量函数：`BaseType_t xSemaphoreTake(xSemaphore,xBlockTime)`
-
-|    形参    |        描述        |
-| :--------: | :----------------: |
-| xSemaphore | 要获取的信号量句柄 |
-| xBlockTime |      阻塞时间      |
-
-| 返回值  |         描述         |
-| :-----: | :------------------: |
-| pdTRUE  |    获取信号量成功    |
-| pdFALSE | 超时，获取信号量失败 |
-
-## 计数型信号量
-
-计数型信号量相当于队列长度大于1 的队列，因此计数型信号量能够容纳多个资源，这在计数型信号量被创建的时候确定的
-
-计数型信号量适用场合：
-
-1. 事件计数    当每次事件发生后，在事件处理函数中释放计数型信号量（计数值+1），其他任务
-
-    会获取计数型信号量（计数值-1） ，这种场合一般在创建时将初始计数值设置为 0 
-
-2. 资源管理    信号量表示有效的资源数目。任务必须先获取信号量（信号量计数值-1 ）才能获取资源控制权。当计数值减为零时表示没有的资源。当任务使用完资源后，必须释放信号量（信号量计数值+1）。信号量创建时计数值应等于最大资源数目
-
-使用计数型信号量的过程：创建计数型信号量 -> 释放信号量 -> 获取信号量
-
-|               函数               |             描述             |
-| :------------------------------: | :--------------------------: |
-|    xSemaphoreCreateCounting()    | 使用动态方法创建计数型信号量 |
-| xSemaphoreCreateCountingStatic() | 使用静态方法创建计数型信号量 |
-|      uxSemaphoreGetCount()       |      获取信号量的计数值      |
-
-> 计数型信号量的释放和获取与二值信号量相同 ！
-
-计数型信号量创建API函数
+## 获取信号量
 
 ```c
-#define xSemaphoreCreateCounting(uxMaxCount,uxInitialCount) xQueueCreateCountingSemaphore((uxMaxCount),(uxInitialCount))
+/**
+  * @brief  获取信号量函数
+  * @param  xSemaphore：正在获取的信号量的句柄
+  * @param  xTicksToWait：等待信号量变为可用的时间
+  * @retval 成功获得信号量则返回pdTRUE；如果xTicksToWait过期，信号量不可用，则返回pdFALSE
+  */
+BaseType_t xSemaphoreTake(SemaphoreHandle_t xSemaphore, TickType_t xTicksToWait);
+/**
+  * @brief  获取信号量的中断安全版本函数
+  * @param  xSemaphore：正在获取的信号量的句柄
+  * @param  pxHigherPriorityTaskWoken：用于通知应用程序编写者是否应该执行上下文切换
+  * @retval 成功获取则返回pdTRUE，未成功获取则返回pdFALSE
+  */
+BaseType_t xSemaphoreTakeFromISR(SemaphoreHandle_t xSemaphore, 
+								 signed BaseType_t *pxHigherPriorityTaskWoken);
+ 
 ```
 
-此函数用于创建一个计数型信号量
-
-|      形参      |        描述        |
-| :------------: | :----------------: |
-|   uxMaxCount   | 计数值的最大值限定 |
-| uxInitialCount |   计数值的初始值   |
-
-| 返回值 |              描述              |
-| :----: | :----------------------------: |
-|  NULL  |            创建失败            |
-| 其他值 | 创建成功返回计数型信号量的句柄 |
+## 删除信号量
 
 ```c
-#define uxSemaphoreGetCount(xSemaphore) uxQueueMessagesWaiting((QueueHandle_t)(xSemaphore))
+/**
+  * @brief  删除信号量，包括互斥锁型信号量和递归信号量
+  * @param  xSemaphore：被删除的信号量的句柄
+  * @retval None
+  */
+void vSemaphoreDelete(SemaphoreHandle_t xSemaphore);
 ```
 
-此函数用于获取信号量当前计数值大小
+##  获取信号量计数
 
-|    形参    |    描述    |
-| :--------: | :--------: |
-| xSemaphore | 信号量句柄 |
+```c
+/**
+  * @brief  获取信号量计数
+  * @param  xSemaphore：正在查询的信号量的句柄
+  * @retval 如果信号量是计数信号量，则返回信号量的当前计数值。如果信号量是二进制信号量，则当信号量可用时，返回1，当信号量不可用时，返回 0
+  */
+UBaseType_t uxSemaphoreGetCount(SemaphoreHandle_t xSemaphore);
+```
 
-| 返回值 |          描述          |
-| :----: | :--------------------: |
-|  整数  | 当前信号量的计数值大小 |
+# 互斥量
 
 ## 优先级翻转简介
 
@@ -1884,7 +1985,7 @@ BaseType_t xQueuePeek(QueueHandle_t xQueue, void *const pvBuffer, TickType_t xTi
 
 **互斥量/互斥锁是一种特殊类型的二进制信号量，用于控制对在两个或多个任务之间共享资源的访问**
 
-互斥锁可以被视为一个与正在共享的资源相关联的令牌，对于合法访问资源的任务，它必须首先成功 “获取” 令牌，成为资源的持有者，当持有者完成对资源的访问之后，其需要 ”归还” 令牌，只有 “归还” 令牌之后，该令牌才可以再次被其他任务所 “获取” ，这样保证了互斥的对共享资源的访问，上述机制如下图所示 *(注释1)*
+互斥锁可以被视为一个与正在共享的资源相关联的令牌，对于合法访问资源的任务，它必须首先成功 “获取” 令牌，成为资源的持有者，当持有者完成对资源的访问之后，其需要 ”归还” 令牌，只有 “归还” 令牌之后，该令牌才可以再次被其他任务所 “获取” ，这样保证了互斥的对共享资源的访问，上述机制如下图所示
 
 ![互斥信号量](C:\Users\Administrator\Documents\GitHub\FreeRTOS-Notes\picture\互斥信号量.png)
 
@@ -1920,10 +2021,6 @@ BaseType_t xQueuePeek(QueueHandle_t xQueue, void *const pvBuffer, TickType_t xTi
 使用互斥信号量：首先将宏`configUSE_MUTEXES`置1
 
 > 注意：创建互斥信号量时，会主动释放一次信号量
-
-```c
-#define xSemaphoreCreateMutex() xQueueCreateMutex(queueQUEUE_TYPE_MUTEX)
-```
 
 ### 创建互斥量
 
@@ -2111,42 +2208,163 @@ QueueSetMemberHandle_t xQueueSelectFromSet(QueueSetHandle_t xQueueSet,TickType_t
 
 ## 事件标志组简介
 
-事件标志位：用一个位，来表示事件是否发生
+**事件标志组适用于多个事件触发一个或多个任务运行，可以实现事件的广播，还可以实现多个任务的同步运行**，如下所述
 
-事件标志组是一组事件标志位的集合， 可以简单的理解事件标志组，就是一个整数。
+- 事件标志组允许任务等待一个或多个事件的组合
+- 事件标志组会解除所有等待同一事件的任务的阻塞状态
 
-事件标志组的特点：
+事件标志组中每个事件标志的状态由 EventBits_t 类型变量中的单个位表示。如果 EventBits_t 变量中的某个位设置为 1 ，则该位表示的事件已发生，否则如果 EventBits_t 变量中的某个位设置为 0 ，则该位表示的事件尚未发生
 
-- 它的每一个位表示一个事件（高8位不算）
-- 每一位事件的含义，由用户自己决定，如：bit0表示按键是否按下，bit1表示是否接受到消息 … …
-
-`这些位的值为1：表示事件发生了；值为0：表示事件未发生`
-
-- 任意任务或中断都可以读写这些位
-- 可以等待某一位成立，或者等待多位同时成立
-
-一个事件组就包含了一个 EventBits_t 数据类型的变量，变量类型 EventBits_t 的定义如下所示： 
-
-```c
-typedef TickType_t EventBits_t;
-#if ( configUSE_16_BIT_TICKS  = =  1 )
-    typedef   uint16_t   TickType_t;
-#else
-    typedef   uint32_t   TickType_t;
-#endif
-#define  configUSE_16_BIT_TICKS    0 
-```
-
-> EventBits_t 实际上是一个 16 位或 32 位无符号的数据类型 
-
-虽然使用了 32 位无符号的数据类型变量来存储事件标志， 但其中的高8位用作存储事件标志组的控制信息，低24位用作存储事件标志 ，所以说`一个事件组最多可以存储 24 个事件标志！`
+一个事件标志组就包含了一个 EventBits_t 数据类型的变量，如下图所示显示了各个事件标志如何映射到 EventBits_t 类型变量中的各个位
 
 ![事件标志组结构](picture/事件标志组结构.png)
+
+### EventBits_t 数据类型
+
+一个事件标志组对象有一个变量类型为 EventBits_t 的内部变量用于存储事件标志位，该变量可以设置为 16 位或 32 位，具体由参数 configUSE_16_BIT_TICKS 所决定，当参数设置为 1 时，那么每个事件标志组包含 8 个可用的事件位（包括 8 个保留位），否则设置为 0 时，每个事件标志组包含 24 个可用的事件位（包括 8 个保留位）
+
+## 队列和事件标志组的区别
 
 |     功能     |                           唤醒对象                           |                           事件清除                           |
 | :----------: | :----------------------------------------------------------: | :----------------------------------------------------------: |
 | 队列、信号量 |                 事件发生时，只会唤醒一个任务                 | 是消耗型的资源，队列的数据被读走就没了；信号量被获取后就减少了 |
 |  事件标志组  | 事件发生时，会唤醒所有符合条件的任务，可以理解为“广播”的作用 |  被唤醒的任务有两个选择，可以让事件保留不动，也可以清除事件  |
+
+## 创建事件标志组
+
+**一个事件标志组在使用之前必须先创建**，如下所示为使用动态/静态内存分配创建一个事件标志组的 API 函数
+
+```c
+/**
+  * @brief  动态分配内存创建事件标志组函数
+  * @retval 返回成功创建的事件标志组的句柄，返回NULL表示因内存空间不足创建失败
+  */
+EventGroupHandle_t xEventGroupCreate(void);
+ 
+/**
+  * @brief  静态分配内存创建事件标志组函数
+  * @param  pxEventGroupBuffer：指向StaticEventGroup_t类型的变量，该变量用于存储事件标志组数据结构体
+  * @retval 返回成功创建的事件标志组的句柄，返回NULL表示因pxEventGroupBuffer空间不足创建失败
+  */
+EventGroupHandle_t xEventGroupCreateStatic(
+								StaticEventGroup_t *pxEventGroupBuffer);
+```
+
+## 操作事件标志组
+
+FreeRTOS 提供了两组 API 来对事件标志组的某些位进行置位和清零两种操作，具体如下所示
+
+```c
+/**
+  * @brief  设置事件标志位
+  * @param  xEventGroup：要设置位的事件标志组
+  * @param  uxBitsToSet：指定要在事件标志组中设置的一个或多个位的按位值，例如设置为0x09表示置位3 和位0
+  * @retval 调用 xEventGroupSetBits()返回时事件标志组的值
+  */
+EventBits_t xEventGroupSetBits(EventGroupHandle_t xEventGroup,
+							   const EventBits_t uxBitsToSet);
+ 
+/**
+  * @brief  将事件标志组某些位清零
+  * @param  xEventGroup：要在其中清除位的事件标志组
+  * @param  uxBitsToSet：表示要在事件标志组中清除一个或多个位的按位值
+  * @retval 返回清除指定位之前的事件标志组的值
+  */
+EventBits_t xEventGroupClearBits(EventGroupHandle_t xEventGroup,
+								 const EventBits_t uxBitsToClear);
+ 
+/**
+  * @brief  上述两个函数的中断安全版本
+  * @param  pxHigherPriorityTaskWoken：用于通知应用程序编写者是否应该执行上下文切换
+  * @retval 消息已发送到RTOS守护进程任务，则返回pdPASS，否则将返回pdFAIL
+  */
+BaseType_t xEventGroupSetBitsFromISR(EventGroupHandle_t xEventGroup,
+									 const EventBits_t uxBitsToSet,
+									 BaseType_t *pxHigherPriorityTaskWoken);
+ 
+BaseType_t xEventGroupClearBitsFromISR(EventGroupHandle_t xEventGroup,
+									   const EventBits_t uxBitsToClear);
+ 
+/*example1: 将事件标志组 EventGroup_Test 的位 1 和 3 置位*/
+EventBits_t return_value;
+return_value = xEventGroupSetBits(EventGroup_Test, 0x0A);
+ 
+/*example2: 将事件标志组 EventGroup_Test 的位 0 和 2 清零*/
+EventBits_t return_value;
+return_value = xEventGroupClearBits(EventGroup_Test, 0x05);
+```
+
+同时 FreeRTOS 也提供了查询事件标志组当前值的 API 函数，具体如下所示
+
+```c
+/**
+  * @brief  读取事件标志组的当前值
+  * @param  xEventGroup：正在查询的事件标志组
+  * @retval 返回事件标志组当前的值
+  */
+EventBits_t xEventGroupGetBits(EventGroupHandle_t xEventGroup);
+ 
+/**
+  * @brief  上述函数的中断安全版本
+  */
+EventBits_t xEventGroupGetBitsFromISR(EventGroupHandle_t xEventGroup);
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 ## 函数
 
@@ -2183,9 +2401,9 @@ EventBits_t xEventGroupClearBits(EventGroupHandle_t xEventGroup,const EventBits_
 | xEventGroup | 待操作的事件标志组句柄 |
 | uxBitsToSet |   待清零的事件标志位   |
 
-| 返回值 |                   描述                   |
-| :----: | :--------------------------------------: |
-|  整数  | 清零事件标志位之前事件组中事件标志位的值 |
+| 返回值 |                     描述                     |
+| :----: | :------------------------------------------: |
+|  整数  | 清零事件标志位之前事件标志组中事件标志位的值 |
 
 ### 设置事件标志位API函数
 
@@ -2198,9 +2416,9 @@ EventBits_t xEventGroupSetBits(EventGroupHandle_t xEventGroup, const EventBits_t
 | xEventGroup | 待操作的事件标志组句柄 |
 | uxBitsToSet |   待设置的事件标志位   |
 
-| 返回值 |                描述                |
-| :----: | :--------------------------------: |
-|  整数  | 函数返回时，事件组中的事件标志位值 |
+| 返回值 |                  描述                  |
+| :----: | :------------------------------------: |
+|  整数  | 函数返回时，事件标志组中的事件标志位值 |
 
 ### 等待事件标志位API函数
 
@@ -2216,14 +2434,14 @@ EventBits_t xEventGroupWaitBits( EventGroupHandle_t xEventGroup,
 | :-------------: | :----------------------------------------------------------: |
 |   xEvenrGroup   |                     等待的事件标志组句柄                     |
 | uxBitsToWaitFor |       等待的事件标志位，可以用逻辑或等待多个事件标志位       |
-|  xClearOnExit   | 成功等待到事件标志位后，清除事件组中对应的事件标志位，  pdTRUE ：清除uxBitsToWaitFor指定位；  pdFALSE：不清除 |
+|  xClearOnExit   | 成功等待到事件标志位后，清除事件标志组中对应的事件标志位，  pdTRUE ：清除uxBitsToWaitFor指定位；  pdFALSE：不清除 |
 | xWaitForAllBits | 等待 uxBitsToWaitFor 中的所有事件标志位（逻辑与）  pdTRUE：等待的位，全部为1  pdFALSE：等待的位，某个为1 |
 |  xTicksToWait   |                        等待的阻塞时间                        |
 
-|       返回值       |                     描述                     |
-| :----------------: | :------------------------------------------: |
-| 等待的事件标志位值 |  等待事件标志位成功，返回等待到的事件标志位  |
-|       其他值       | 等待事件标志位失败，返回事件组中的事件标志位 |
+|       返回值       |                       描述                       |
+| :----------------: | :----------------------------------------------: |
+| 等待的事件标志位值 |    等待事件标志位成功，返回等待到的事件标志位    |
+|       其他值       | 等待事件标志位失败，返回事件标志组中的事件标志位 |
 
 特点：
 
@@ -2242,15 +2460,15 @@ EventBits_t xEventGroupSync(EventGroupHandle_t xEventGroup,
 
 |      形参       |              描述              |
 | :-------------: | :----------------------------: |
-|   xEventGroup   |     等待事件标志所在事件组     |
+|   xEventGroup   |   等待事件标志所在事件标志组   |
 |   uxBitsToSet   | 达到同步点后，要设置的事件标志 |
 | uxBitsToWaitFor |         等待的事件标志         |
 |  xTicksToWait   |         等待的阻塞时间         |
 
-|       返回值       |                     描述                     |
-| :----------------: | :------------------------------------------: |
-| 等待的事件标志位值 |  等待事件标志位成功，返回等待到的事件标志位  |
-|       其他值       | 等待事件标志位失败，返回事件组中的事件标志位 |
+|       返回值       |                       描述                       |
+| :----------------: | :----------------------------------------------: |
+| 等待的事件标志位值 |    等待事件标志位成功，返回等待到的事件标志位    |
+|       其他值       | 等待事件标志位失败，返回事件标志组中的事件标志位 |
 
 例子: Task1：做饭    Task2：做菜, Task1做好自己的事之后，需要等待菜也做好，大家在一起吃饭。`同步！`
 
