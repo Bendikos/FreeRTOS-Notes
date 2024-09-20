@@ -2265,7 +2265,7 @@ EventBits_t xEventGroupSync(EventGroupHandle_t xEventGroup,
 
 xEventGroupSync() 函数返回函数退出时事件标志组的值，可能有以下两种情况
 
-1. xEventGroupSync() 函数的 *uxBitsToWaitFor* 参数指定了调用任务的解锁条件，**如果该函数由于满足解锁条件而返回，则 \*uxBitsToWaitFor\* 指定的事件位将在 xEventGroupSync() 返回之前清回零，并且在自动清为零之前会将事件标志组的值作为函数返回值返回**
+1. xEventGroupSync() 函数的 *uxBitsToWaitFor* 参数指定了调用任务的解锁条件，**如果该函数由于满足解锁条件而返回，则 *uxBitsToWaitFor* 指定的事件位将在 xEventGroupSync() 返回之前清回零，并且在自动清为零之前会将事件标志组的值作为函数返回值返回**
 2. 如果 xEventGroupSync() 由于 *xTicksToWait* 参数指定的阻塞时间到期而返回，**则返回值为阻塞时间到期时事件标志组的值**，在这种情况下，返回值将不满足调用任务的解锁条件
 
 ### 应用举例
@@ -2351,10 +2351,16 @@ typedef struct tskTaskControlBlock
 其中任务通知状态共有3种取值：
 
 ```c
-#define     taskNOT_WAITING_NOTIFICATION ( ( uint8_t ) 0 ) /* 任务未等待通知 */
-#define     taskWAITING_NOTIFICATION     ( ( uint8_t ) 1 ) /* 任务在等待通知, 提前调用接收函数 */
-#define     taskNOTIFICATION_RECEIVED    ( ( uint8_t ) 2 ) /* 任务在等待接收, 提前调用发送函数 */
+#define     taskNOT_WAITING_NOTIFICATION ( ( uint8_t ) 0 ) /* 任务没有在等待通知。初始状态或者任务已经完成了对通知的等待，准备进入下一个等待通知的周期。 */
+#define     taskWAITING_NOTIFICATION     ( ( uint8_t ) 1 ) /* 任务正在等待通知。也被称为Not-Pending（未挂起）。当任务调用ulTaskNotifyTake 等待通知时，它的状态将变为等待通知状态。任务会一直保持在这个状态，直到它收到通知或者等待超时。 */
+#define     taskNOTIFICATION_RECEIVED    ( ( uint8_t ) 2 ) /* 任务已经收到通知。也被称为pending（挂起）。当任务成功接收到通知时，其状态将从等待通知状态切换到通知已接收状态。任务可以通过调用 ulTaskNotifyTake 函数获取通知的值，并执行相应的操作。 */
 ```
+
+## API 函数
+
+1. **强大通用但较复杂的 xTaskNotify() 和 xTaskNotifyWait() API 函数**
+2. **用作二进制或计数信号量的更轻量级且更快的替代方案的 xTaskNotifyGive() 和 ulTaskNotifyTake() API 函数**
+3. **在序号 1 的基础上增加 *pulPreviousNotifyValue* 参数值的 xTaskNotifyAndQuery() API函数**
 
 ## xTaskNotifyGive() 和 ulTaskNotifyTake() API 函数
 
@@ -2431,127 +2437,7 @@ BaseType_t xTaskNotifyFromISR(TaskHandle_t xTaskToNotify,
 
 ### eAction 参数
 
-eAction 参数是一个 eNotifyAction 枚举类型，其定义了 5 中不同枚举类型，用于模拟二值信号量、计数信号量、队列、事件组和 ”邮箱“ 等功能，其具体定义如下所述
-
-|     eNotifyAction 值      | 对接收任务的最终影响                                         |
-| :-----------------------: | :----------------------------------------------------------- |
-|         eNoAction         | 接收任务的通知状态设置为待处理，而不更新其通知值，未使用 xTaskNotify() 中 ulValue 参数 |
-|         eSetBits          | 接收任务的通知值与 xTaskNotify() 中 ulValue 参数中传递的值进行按位或运算，例如：如果 ulValue 设置为 0x01，则接收任务的通知值中将置位第 0 位 |
-|        eIncrement         | 接收任务的通知值递增，未使用 xTaskNotify() 中 ulValue 参数   |
-| eSetValueWithoutOverwrite | 如果接收任务在调用 xTaskNotify() 之前有待处理的通知，则不执行任何操作，并且 xTaskNotify() 将返回 pdFAIL；如果在调用 xTaskNotify() 之前接收任务没有待处理的通知，则接收任务的通知值将设置为 xTaskNotify() 中 ulValue 参数中传递的值 |
-|  eSetValueWithOverwrite   | 接收任务的通知值设置为 xTaskNotify() ulValue 参数中传递的值，无论接收任务在调用 xTaskNotify() 之前是否有待处理的通知 |
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-### 任务通知相关API函数介绍
-
-任务通知API函数主要有两类：①发送通知 ，②接收通知。
-
-> 注意：发送通知API函数可以用于任务和中断服务函数中；接收通知API函数只能用在任务中。
-
-①发送通知相关API函数：
-
-|             函数             |                            描述                            |
-| :--------------------------: | :--------------------------------------------------------: |
-|        xTaskNotify()         |                    发送通知，带有通知值                    |
-|    xTaskNotifyAndQuery()     |       发送通知，带有通知值并且保留接收任务的原通知值       |
-|      xTaskNotifyGive()       |                    发送通知，不带通知值                    |
-|     xTaskNotifyFromISR()     |              在中断中发送任务通知，带有通知值              |
-| xTaskNotifyAndQueryFromISR() | 在中断中发送任务通知，带有通知值并且保留接收任务的原通知值 |
-|   vTaskNotifyGiveFromISR()   |              在中断中发送任务通知，不带通知值              |
-
-```c
-#define xTaskNotifyAndQuery(xTaskToNotify,ulValue,eAction,pulPreviousNotifyValue)\
-xTaskGenericNotify( ( xTaskToNotify ), 
-                    ( tskDEFAULT_INDEX_TO_NOTIFY ), 
-                    ( ulValue ), 
-                    ( eAction ),
-                    ( pulPreviousNotifyValue ) )
-```
-
-```c
-#define    xTaskNotify(xTaskToNotify,ulValue,eAction)\
-xTaskGenericNotify((xTaskToNotify),(tskDEFAULT_INDEX_TO_NOTIFY),(ulValue),(eAction),NULL)
-```
-
-```c
-#define    xTaskNotifyGive(xTaskToNotify)\
-xTaskGenericNotify((xTaskToNotify),(tskDEFAULT_INDEX_TO_NOTIFY),(0),eIncrement,NULL)
-```
-
-```c
-BaseType_t  xTaskGenericNotify( TaskHandle_t     xTaskToNotify,
-                                UBaseType_t      uxIndexToNotify,
-                                uint32_t         ulValue,
-                                eNotifyAction    eAction,
-                                uint32_t *       pulPreviousNotificationValue  )
-```
-
-|             形参             |                    描述                     |
-| :--------------------------: | :-----------------------------------------: |
-|        xTaskToNotify         |           接收任务通知的任务句柄            |
-|       uxIndexToNotify        |    任务的指定通知（任务通知相关数组成员)    |
-|           ulValue            |                 任务通知值                  |
-|           eAction            |          通知方式（通知值更新方式)          |
-| pulPreviousNotificationValue | 用于保存更新前的任务通知值（为NULL则不保存) |
-
-任务通知方式`eAction`共有以下几种：
+*eAction* 参数是一个 eNotifyAction 枚举类型，其定义了 5 中不同枚举类型，用于模拟二值信号量、计数信号量、队列、事件组和 ”邮箱“ 等功能，其具体定义如下所述
 
 ```c
 typedef enum
@@ -2564,71 +2450,105 @@ typedef enum
 } eNotifyAction;
 ```
 
-②接收通知相关API函数：
+|     eNotifyAction 值      | 对接收任务的最终影响                                         |
+| :-----------------------: | :----------------------------------------------------------- |
+|         eNoAction         | 接收任务的通知状态设置为待处理，而不更新其通知值，未使用 xTaskNotify() 中 ulValue 参数 |
+|         eSetBits          | 接收任务的通知值与 xTaskNotify() 中 ulValue 参数中传递的值进行按位或运算，例如：如果 ulValue 设置为 0x01，则接收任务的通知值中将置位第 0 位 |
+|        eIncrement         | 接收任务的通知值递增，未使用 xTaskNotify() 中 ulValue 参数   |
+| eSetValueWithoutOverwrite | 如果接收任务在调用 xTaskNotify() 之前有待处理的通知，则不执行任何操作，并且 xTaskNotify() 将返回 pdFAIL；如果在调用 xTaskNotify() 之前接收任务没有待处理的通知，则接收任务的通知值将设置为 xTaskNotify() 中 ulValue 参数中传递的值 |
+|  eSetValueWithOverwrite   | 接收任务的通知值设置为 xTaskNotify() ulValue 参数中传递的值，无论接收任务在调用 xTaskNotify() 之前是否有待处理的通知 |
 
-|        函数        |                             描述                             |
-| :----------------: | :----------------------------------------------------------: |
-| ulTaskNotifyTake() | 获取任务通知，可以设置在退出此函数的时候将任务通知值清零或者减一。  当任务通知用作二值信号量或者计数信号量的时候，使用此函数来获取信号量 |
-| xTaskNotifyWait()  | 获取任务通知，比 ulTaskNotifyTak()更为复杂，可获取通知值和清除通知值的指定位 |
+## xTaskNotifyWait() API 函数
 
-总结：
-
-- 当任务通知用作于信号量时，使用函数获取信号量：ulTaskNotifyTake()
-- 当任务通知用作于事件标志组或队列时，使用此函数来获取： xTaskNotifyWait()
-
-```c
-#define ulTaskNotifyTake(xClearCountOnExit,xTicksToWait)\
-ulTaskGenericNotifyTake(( tskDEFAULT_INDEX_TO_NOTIFY ),( xClearCountOnExit ),( xTicksToWait ))
-```
-
-此函数用于接收任务通知值，可以设置在退出此函数的时候将任务通知值清零或者减一
-
-|       形参        |                             描述                             |
-| :---------------: | :----------------------------------------------------------: |
-|  uxIndexToWaitOn  |            任务的指定通知（任务通知相关数组成员)             |
-| xClearCountOnExit | 指定在成功接收通知后，将通知值清零或减 1，  pdTRUE：把通知值清零；pdFALSE：把通知值减一 |
-|   xTicksToWait    |                 阻塞等待任务通知值的最大时间                 |
-
-| 返回值 |              描述              |
-| :----: | :----------------------------: |
-|   0    |            接收失败            |
-|  非 0  | 接收成功，返回任务通知的通知值 |
+xTaskNotifyWait() 是 ulTaskNotifyTake() 的功能更强大的版本，它允许任务以可选的超时等待调用任务的通知状态变为待处理（如果它尚未处于待处理状态），xTaskNotifyWait() 提供了在进入函数和退出函数时清除调用任务的通知值中的位的参数 *ulBitsToClearOnEntry* 和 *ulBitsToClearOnExit*
 
 ```c
-#define xTaskNotifyWait(    ulBitsToClearOnEntry,             \
-                            ulBitsToClearOnExit,             \
-                            pulNotificationValue,             \
-                            xTicksToWait)                 \
-
-xTaskGenericNotifyWait(     tskDEFAULT_INDEX_TO_NOTIFY,     \
-                            ( ulBitsToClearOnEntry ),             \
-                            ( ulBitsToClearOnExit ),             \
-                            ( pulNotificationValue ),             \
-                            ( xTicksToWait )               ) 
+/**
+  * @brief  任务通知的中断安全版本函数
+  * @param  ulBitsToClearOnEntry：参考 “3.6.1、ulBitsToClearOnEntry 参数” 小节
+  * @param  ulBitsToClearOnExit：参考 “3.6.2、_ulBitsToClearOnExit_ 参数” 小节
+  * @param  pulNotificationValue：用于传递任务的通知值，因为等待通知的函数可能由于 ulBitsToClearOnExit 参数在函数退出时收到的消息值已被更改
+  * @param  xTicksToWait：调用任务应保持阻塞状态以等待其通知状态变为挂起状态的最长时间
+  * @retval 参考 “3.6.2、xTaskNotifyWait() 函数返回值” 小节
+  */
+BaseType_t xTaskNotifyWait(uint32_t ulBitsToClearOnEntry,
+						   uint32_t ulBitsToClearOnExit,
+						   uint32_t *pulNotificationValue,
+						   TickType_t xTicksToWait);
 ```
 
-此函数用于获取通知值和清除通知值的指定位值，适用于模拟队列和事件标志组，使用该函数来获取任务通知 。 
+### *ulBitsToClearOnEntry* 参数
+
+**如果调用任务在调用 xTaskNotifyWait() 之前没有待处理的通知，则在进入该函数时，将在任务的通知值中清除参数 *ulBitsToClearOnEntry* 中设置的任何位**
+
+例如，如果参数 *ulBitsToClearOnEntry* 为 0x01，则任务通知值的位 0 将被清除，再举一个例子，将参数 *ulBitsToClearOnEntry* 设置为 0xffffffff（ULONG_MAX）将清除任务通知值中的所有位，从而有效地将值清除为 0
+
+### ulBitsToClearOnExit* 参数
+
+**如果调用任务因为收到通知而退出 xTaskNotifyWait() ，或者因为在调用 xTaskNotifyWait() 时已经有通知挂起，那么在参数 *ulBitsToClearOnExit* 中设置的任何位将在任务退出 xTaskNotifyWait() 函数之前在任务的通知值中被清除**
+
+例如，如果参数 *ulBitsToClearOnExit* 为 0x03 ，则任务通知值的位 0 和位 1 将在函数退出之前被清除，再举个例子，将参数 *ulBitsToClearOnExit* 为 0xffffffff（ULONG_MAX）将清除任务通知值中的所有位，从而有效地将值清除为 0
+
+### xTaskNotifyWait() 函数返回值
+
+有两种可能的返回值，分别为 pdPASS 和 pdFALSE ，具体如下所述
+
+① pdPASS
+
+1. 调用 xTaskNotifyWait() 时调用任务已经有待处理的通知
+2. 调用 xTaskNotifyWait() 时调用任务没有待处理的通知，由于设置了阻塞时间因此进入阻塞状态等待消息挂起，在阻塞时间到期之前成功等到消息挂起
+
+② pdFALSE
+
+1. 调用 xTaskNotifyWait() 时调用任务没有待处理的通知，由于设置了阻塞时间因此进入阻塞状态等待消息挂起，但是直到阻塞时间到期都没有等到消息挂起
+
+## 其他 API 函数
+
+除了上面的一些常用 API 之外，还有一些工具或不常用的 API 函数，因为启用任务通知后会在任务控制块中增加一个任务状态和一个任务通知值，因此 FreeRTOS 提供了**清除任务状态的 xTaskNotifyStateClear() API 函数和 清除任务通知值的 ulTaskNotifyValueClear() API 函数**
+
+另外增加了 "3.3、任务通知 API 概述" 小节中提到的在 xTaskNotify() API 函数上增加了 *pulPreviousNotifyValue* 参数的 xTaskNotifyAndQuery() API函数和其中断安全版本函数，上述提到的四个函数声明具体如下所述
 
 ```c
-BaseType_t    xTaskGenericNotifyWait( UBaseType_t     uxIndexToWaitOn,
-                                      uint32_t         ulBitsToClearOnEntry,
-                                      uint32_t         ulBitsToClearOnExit,
-                                      uint32_t *       pulNotificationValue,
-                                      TickType_t       xTicksToWait        ); 
+/**
+  * @brief  清除任务通知状态
+  * @param  xTask：要操作的任务句柄
+  * @retval 如果要操作的任务有待处理的通知，并且该通知已清除，则返回pdTRUE；如果该任务没有待处理的通知，则返回pdFALSE
+  */
+BaseType_t xTaskNotifyStateClear(TaskHandle_t xTask);
+ 
+/**
+  * @brief  清除任务通知值
+  * @param  xTask：要操作的任务句柄
+  * @param  ulBitsToClear：xTask的通知值中要清除的位的位掩码，比如设置为0x01表示将通知值的第0位清除
+  * @retval ulBitsToClear指定的位被清除之前目标任务的通知值的值
+  */
+uint32_t ulTaskNotifyValueClear(TaskHandle_t xTask,
+								uint32_t ulBitsToClear);
+ 
+/**
+  * @brief  执行与xTaskNotify()相同的操作，此外它还在附加的pulPreviousNotifyValue中返回目标任务的先前通知值（调用函数时的通知值，而不是函数返回时的通知值）
+  * @param  xTaskToNotify：被通知任务的句柄
+  * @param  ulValue：通知值，ulValue的使用方式取决于eAction值，参考 “eAction 参数” 小节
+  * @param  eAction：一个枚举类型，指定如何更新接收任务的通知值，参考 “eAction 参数” 
+  * @param  pulPreviousNotifyValue：返回目标任务的先前通知值
+  * @retval 除 “eAction 参数” 小节提到的一种情况外，均返回pdPASS
+  */
+BaseType_t xTaskNotifyAndQuery(TaskHandle_t xTaskToNotify,
+							   uint32_t ulValue,
+							   eNotifyAction eAction,
+							   uint32_t *pulPreviousNotifyValue);
+							   
+ 
+/**
+  * @brief  上述函数的中断安全版本
+  * @param  pxHigherPriorityTaskWoken：通知应用程序编程者是否需要进行上下文切换
+  */
+BaseType_t xTaskNotifyAndQueryFromISR(TaskHandle_t xTaskToNotify,
+									  uint32_t ulValue,
+									  NotifyAction eAction,
+									  uint32_t *pulPreviousNotifyValue,
+									  BaseType_t *pxHigherPriorityTaskWoken)
 ```
-
-|         形参          |                         描述                          |
-| :-------------------: | :---------------------------------------------------: |
-|    uxIndexToWaitOn    |         任务的指定通知（任务通知相关数组成员)         |
-| ulBitesToClearOnEntry |   等待前清零指定任务通知值的比特位（旧值对应bit清0)   |
-| ulBitesToClearOnExit  | 成功等待后清零指定的任务通知值比特位（新值对应bit清0) |
-| pulNotificationValue  |      用来取出通知值（如果不需要取出，可设为NULL)      |
-|     xTicksToWait      |             阻塞等待任务通知值的最大时间              |
-
-| 返回值  |       描述       |
-| :-----: | :--------------: |
-| pdTRUE  | 等待任务通知成功 |
-| pdFALSE | 等待任务通知失败 |
 
 # 软件定时器
 
