@@ -384,7 +384,7 @@ BaseType_t xTaskAbortDelay(TaskHandle_t xTask);
 
 空闲任务何时被创建？**当调用 vTaskStartScheduler() 启动调度器时就会自动创建一个空闲任务，如下图所示，另外空闲任务还负责将分配给已删除任务的内存释放掉**
 
-![空闲任务](C:\Users\Administrator\Documents\GitHub\FreeRTOS-Notes\picture\空闲任务.png)
+![空闲任务](picture/空闲任务.png)
 
 ### 空闲任务钩子函数
 
