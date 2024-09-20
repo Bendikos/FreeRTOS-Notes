@@ -2401,37 +2401,6 @@ xEventGroupSync() 函数返回函数退出时事件标志组的值，可能有�
 void vEventGroupDelete(EventGroupHandle_t xEventGroup);
 ```
 
-
-
-
-
-
-
-
-
-### 同步函数
-
-```c
-EventBits_t xEventGroupSync(EventGroupHandle_t xEventGroup,
-                            const EventBits_t uxBitsToSet,
-                            const EventBits_t uxBitsToWaitFor,
-                            TickType_t xTicksToWait)
-```
-
-|      形参       |              描述              |
-| :-------------: | :----------------------------: |
-|   xEventGroup   |   等待事件标志所在事件标志组   |
-|   uxBitsToSet   | 达到同步点后，要设置的事件标志 |
-| uxBitsToWaitFor |         等待的事件标志         |
-|  xTicksToWait   |         等待的阻塞时间         |
-
-|       返回值       |                       描述                       |
-| :----------------: | :----------------------------------------------: |
-| 等待的事件标志位值 |    等待事件标志位成功，返回等待到的事件标志位    |
-|       其他值       | 等待事件标志位失败，返回事件标志组中的事件标志位 |
-
-例子: Task1：做饭    Task2：做菜, Task1做好自己的事之后，需要等待菜也做好，大家在一起吃饭。`同步！`
-
 # 任务通知
 
 ## 任务通知的简介
