@@ -2,45 +2,55 @@
 
 ## 任务调度简介
 
-调度器就是使用相关的`调度算法`来决定当前需要执行的哪个任务
+**调度器保证了总是在所有可运行的任务中选择具有最高优先级的任务，并将其进入运行态**
 
-FreeRTOS 一共支持三种任务调度方式:  
+根据 configUSE_PREEMPTION （使用抢占调度器） 和 configUSE_TIME_SLICING （使用时间片轮询） 两个参数的不同，FreeRTOS涉及三种不同的调度方法
 
-1. **抢占式调度**: 主要是针对优先级不同的任务, 每个任务都有一个优先级, 优先级高的任务可以抢占优先级低的任务。
-2. **时间片调度**: 主要针对优先级相同的任务, 当多个任务的优先级相同时,  任务调度器会在每一次系统时钟节拍到的时候切换任务。
-3. **协程式调度**: 当前执行任务将会一直运行, 同时高优先级的任务不会抢占低优先级任务
+1. 时间片轮询的抢占式调度方法（configUSE_PREEMPTION=1，configUSE_TIME_SLICING=1）
+2. 不用时间片轮询的抢占式调度方法（configUSE_PREEMPTION=1，configUSE_TIME_SLICING=0）
+3. 协作式调度方法（configUSE_PREEMPTION=0）任务不会被强制抢占，只有当任务主动让出执行权时，调度器才会切换到其他任务执行。
 
->  虽然 FreeRTOS 现在还支持协程式调度, 但是官方已经表示不会再更新了
+### 什么是时间片？
 
-### 抢占式调度
+FreeRTOS基础时钟的一个定时周期称为一个时间片，所以其长度由 configTICK_RATE_HZ 参数决定，默认情况下为1000HZ（也即1ms）
 
-![抢占式调度示例图](picture/抢占式调度示例图.png)
+对于时间片轮询的抢占式调度方法，其在任务调度过程中一般满足以下两点要求
 
-运行过程如下: 
+1. 高优先级的任务可以抢占低优先级的任务
+2. 同等优先级的任务根据时间片轮流执行
 
-1. 首先Task1在运行中, 在这个过程中Task2就绪了, 在抢占式调度器的作用下Task2会抢占Task1的运行
-2. Task2运行过程中, Task3就绪了, 在抢占式调度器的作用下Task3会抢占Task2的运行
-3. Task3运行过程中, Task3阻塞了 (系统延时或等待信号量等 ) , 此时就绪态中, 优先级最高的任务Task2执行
-4. Task3阻塞解除了 (延时到了或者接收到信号量 ) , 此时Task3恢复到就绪态中, 抢占TasK2的运行
+对于不用时间片轮询的抢占式调度方法，其在任务调度过程中一般满足以下两点要求
 
-总结: 
+1. 高优先级的任务同样可以抢占低优先级的任务
+2. 同等优先级的任务不会按照时间片轮流执行，可能出现任务间占用处理器时间相差很大的情况
 
-1. 高优先级任务优先执行
-2. 高优先级任务不停止, 低优先级任务无法执行
-3. 被抢占的任务将会进入就绪态
+任务调度主要是由任务调度器 scheduler 负责，其由 FreeRTOS 内核管理，用户一般无需控制任务调度器，但是 FreeRTOS 也给用户提供了启动、停止、挂起和恢复三个常见的控制 scheduler 的 API 函数，具体如下所述
 
-### 时间片调度
-
-同等优先级任务轮流地享有相同的 CPU 时间(可设置),  叫**时间片**, 在 FreeRTOS 中, 一个时间片就等于SysTick 中断周期, 没有用完的时间片不会再使用
-
-![时间片调度示例图](picture/时间片调度示例图.png)
-
-运行过程如下: 
-
-1. 首先Task1运行完一个时间片后, 切换至Task2运行
-2. Task2运行完一个时间片后, 切换至Task3运行
-3. Task3运行过程中 (还不到一个时间片 ) , Task3阻塞了 (系统延时或等待信号量等 ), 此时直接切换到下一个任务
-4. Task1运行完一个时间片后, 切换至Task2运行
+```c
+/**
+  * @brief  启动调度器
+  * @retval None
+  */
+void vTaskStartScheduler(void);
+ 
+/**
+  * @brief  停止调度器
+  * @retval None
+  */
+void vTaskEndScheduler(void);
+ 
+/**
+  * @brief  挂起调度器
+  * @retval None
+  */
+void vTaskSuspendAll(void);
+ 
+/**
+  * @brief  恢复调度器
+  * @retval 返回是否会导致发生挂起的上下文切换(pdTRUE/pdFALSE)
+  */
+BaseType_t xTaskResumeAll(void);
+```
 
 ## 任务状态
 
@@ -89,13 +99,33 @@ BaseType_t xTaskResumeFromISR(TaskHandle_t pxTaskToResume);
 
 ![四种任务状态之间的转换图](picture/四种任务状态之间的转换图.png)
 
-> 仅就绪态可转变成运行态
-
 这四种状态中, 除了运行态, 其他三种任务状态的任务都有其对应的任务状态列表
 
 1. 就绪列表:`pxReadyTasksLists[x]`, 数组的下标对应任务的优先级，优先级越低对应的数组下标越小。空闲任务的优先级最低，对应的是下标为0的链表。任务在创建的时候, 会根据任务的优先级将任务插入到就绪列表不同的位置。相同优先级的任务插入到就绪列表里面 的同一条链表中
 2. 阻塞列表: pxDelayedTaskList
 3. 挂起列表: xSuspendedTaskList
+
+在程序中可以使用 eTaskGetState() API 函数利用任务的句柄查询任务当前处于什么状态，任务的状态由枚举类型 eTaskState 表示，具体如下所示
+
+```c
+/**
+  * @brief  查询一个任务当前处于什么状态
+  * @param  pxTask：要查询任务状态的任务句柄，NULL查询自己
+  * @retval 任务状态的枚举类型
+  */
+eTaskState eTaskGetState(TaskHandle_t pxTask);
+ 
+/*任务状态枚举类型返回值*/
+typedef enum
+{
+	eRunning = 0,	/* 任务正在查询自身的状态，因此肯定是运行状态 */
+	eReady,			/* 就绪状态 */
+	eBlocked,		/* 阻塞状态 */
+	eSuspended,		/* 挂起状态 */
+	eDeleted,		/* 正在查询的任务已被删除，但其 TCB 尚未释放 */
+	eInvalid		/* 无效状态 */
+} eTaskState;
+```
 
 ## 源码函数命名规律
 
@@ -236,32 +266,158 @@ typedef struct tskTaskControlBlock *TaskHandle_t;
 >
 > 每个任务都有属于自己的任务控制块, 类似身份证
 
+## 任务优先级
 
+FreeRTOS每个任务都拥有一个自己的优先级，该优先级可以在创建任务时以参数的形式传入，也可以在需要修改时通过 vTaskPrioritySet() API函数动态设置优先级
 
-### 静态创建任务使用流程 (用起来只需这五步)
-
-1. 需将宏`configSUPPORT_STATIC_ALLOCATION`配置为 1 
-2. 定义空闲任务&定时器任务的任务堆栈及TCB
-3. 实现两个接口函数`vApplicationGetIdleTaskMemory()`和`vApplicationGetTimerTaskMemory()`
-4. 定义函数入口参数
-5. 编写任务函数
-
-> `静态创建任务函数`创建的任务会立刻进入就绪态, 由任务调度器调度运行
-
-### 静态创建内部实现
-
-1. TCB结构体成员赋值
-2. 添加新任务到就绪列表中
-
-## 任务删除函数
+**任务优先级的设置范围为1~(configMAX_PRIORITIES-1)，任务设置的优先级数字越大优先级越高**，设置优先级时可以直接使用数字进行设置，也可以使用内核定义好的枚举类型设置，另外可以使用 uxTaskPriorityGet() API函数获取任务的优先级，如下所示列出了部分优先级枚举类型定义
 
 ```c
-void vTaskDelete(TaskHandle_t xTaskToDelete);
+/*cmsis_os2.c中的定义*/
+typedef enum {
+  osPriorityNone          =  0,         ///< No priority (not initialized).
+  osPriorityIdle          =  1,         ///< Reserved for Idle thread.
+  osPriorityLow           =  8,         ///< Priority: low
+  osPriorityNormal        = 24,         ///< Priority: normal
+  osPriorityAboveNormal   = 32,         ///< Priority: above normal
+  osPriorityHigh          = 40,         ///< Priority: high
+  osPriorityRealtime      = 48,         ///< Priority: realtime
+  osPriorityISR           = 56,         ///< Reserved for ISR deferred thread.
+} osPriority_t;
 ```
 
-|     形参      |         描述         |
-| :-----------: | :------------------: |
-| xTaskToDelete | 待删除任务的任务句柄 |
+任务的优先级主要决定了在任务调度时，多个任务同时处于就绪态时应该让哪个任务先执行，**FreeRTOS调度器则保证了任何时刻总是在所有可运行的任务中选择具有最高优先级的任务，并将其进入运行态**，如下所述为上述提到的两个设置和获取任务优先级函数的具体声明
+
+```c
+/**
+  * @brief  修改任务优先级
+  * @param  pxTask：要修改优先级的任务句柄，通过NULL改变任务自身优先级
+  * @param  uxNewPriority：要修改的任务优先级
+  * @retval None
+  */
+void vTaskPrioritySet(TaskHandle_t pxTask, UBaseType_t uxNewPriority);
+ 
+/**
+  * @brief  获取任务优先级
+  * @param  pxTask：要获取任务优先级的句柄，通过NULL获取任务自身优先级
+  * @retval 任务优先级
+  */
+UBaseType_t uxTaskPriorityGet(TaskHandle_t pxTask);
+```
+
+## 延时函数
+
+学习STM32时经常会使用到HAL库的延时函数HAL_Delay()，FreeRTOS也同样提供了vTaskDelay() 和 vTaskDelayUntil() 两个 API延时函数，如下所述
+
+```c
+/**
+  * @brief  延时函数
+  * @param  xTicksToDelay：延迟多少个心跳周期
+  * @retval None
+  */
+void vTaskDelay(TickType_t xTicksToDelay);
+ 
+/**
+  * @brief  延时函数，用于实现一个任务固定执行周期
+  * @param  pxPreviousWakeTime：保存任务上一次离开阻塞态的时刻
+  * @param  xTimeIncrement：指定任务执行多少心跳周期
+  * @retval None
+  */
+void vTaskDelayUntil(TickType_t *pxPreviousWakeTime, TickType_t xTimeIncrement);
+```
+
+上述两个延时函数与 HAL_Delay() 作用都是延时，**但是FreeRTOS延时函数 API 可以让任务进入阻塞状态，而 HAL_Delay() 不具有该功能**，因此如果一个任务需要使用延时，一般应该使用 FreeRTOS 的 API 函数让任务进入阻塞状态等待延时结束，处于阻塞状态的任务便可以让出内核处理其他任务
+
+对于 vTaskDelayUntil() API函数的 *pxPreviousWakeTime* 参数一般通过 xTaskGetTickCount() API函数获取，该函数作用为获取滴答信号当前计数值，具体如下所述
+
+```c
+/**
+  * @brief  获取滴答信号当前计数值
+  * @retval 滴答信号当前计数值
+  */
+TickType_t xTaskGetTickCount(void);
+ 
+/**
+  * @brief  获取滴答信号当前计数值的中断安全版本
+  */
+TickType_t xTaskGetTickCountFromISR(void);
+ 
+/**
+  * @brief  周期任务函数结构
+  * @retval None
+  */
+void APeriodTaskFunction(void *pvParameters)  
+{
+	/*获取任务创建后的滴答信号计数值*/
+	TickType_t pxPreviousWakeTime = xTaskGetTickCount();
+	
+	for(;;)
+	{
+		/*完成任务的功能代码*/
+		
+		/*任务周期500ms*/
+		vTaskDelayUntil(&pxPreviousWakeTime, pdMS_TO_TICKS(500));
+	}
+	/*跳出循环的任务需要被删除*/
+	vTaskDelete(NULL);
+}
+```
+
+**当一个任务因为延时函数或者其他同步事件进入阻塞状态后，可以通过 xTaskAbortDelay() API 函数终止任务的阻塞状态**，即使事件任务等待尚未发生，或者任务进入时指定的超时时间阻塞状态尚未过去，都会使其进入就绪状态，具体函数描述如下所述
+
+```c
+/**
+  * @brief  终止任务延时，退出阻塞状态
+  * @param  xTask：操作的任务句柄
+  * @retval pdPASS：任务成功从阻塞状态中删除，pdFALSE：任务不属于阻塞状态导致删除失败
+  */
+BaseType_t xTaskAbortDelay(TaskHandle_t xTask);
+```
+
+## 为什么会有空闲任务?
+
+### 概述
+
+**FreeRTOS 调度器决定在任何时刻处理器必须保持有一个任务运行**，当用户创建的所有任务都处于阻塞状态不能运行时，空闲任务就会被运行
+
+空闲任务是一个优先级为0（最低优先级）的非常短小的循环，其优先级为 0 保证了不会影响到具有更高优先级的任务进入运行态，一旦有更高优先级的任务进入就绪态，空闲任务就会立刻切出运行态
+
+空闲任务何时被创建？**当调用 vTaskStartScheduler() 启动调度器时就会自动创建一个空闲任务，如下图所示，另外空闲任务还负责将分配给已删除任务的内存释放掉**
+
+![空闲任务](C:\Users\Administrator\Documents\GitHub\FreeRTOS-Notes\picture\空闲任务.png)
+
+### 空闲任务钩子函数
+
+空闲任务有一个钩子函数，可以通过配置 configUSE_IDLE_HOOK 参数为 Enable 启动空闲任务的钩子函数，如果是使用STM32CubeMX软件生成的工程则会自动生成空闲任务钩子函数，当调度器调度内核进入空闲任务时就会调用钩子函数
+
+通常空闲任务钩子函数主要被用于下方函数体内部注释列举的几种情况，如下所述为空闲任务钩子函数典型的任务函数结构
+```c
+/**
+  * @brief  空闲任务钩子函数
+  * @retval NULL
+  */
+void vApplicationIdleHook(void)
+{
+	/*
+		1.执行低优先级，或后台需要不停处理的功能代码
+		2.测试系统处理裕量（内核执行空闲任务时间越长表示内核越空闲）
+		3.将处理器配置到低功耗模式（Tickless模式）
+	*/
+}
+```
+
+## 删除任务
+
+**一个任务不再需要时，需要显示调用 vTaskDelete() API函数将任务删除**，该函数需要传入要删除任务的句柄这个参数（传入NULL时表示删除自己），函数声明如下所述
+
+```c
+/**
+  * @brief  任务删除函数，需将宏`INCLUDE_vTaskDelete`配置为 1 
+  * @param  pxTaskToDelete：要删除的任务句柄，NULL表示删除自己
+  * @retval None
+  */
+void vTaskDelete(TaskHandle_t pxTaskToDelete);
+```
 
 > 用于删除已被创建的任务, 被删除的任务将从就绪态任务列表、阻塞态任务列表、挂起态任务列表和事件列表中移除
 
@@ -270,17 +426,20 @@ void vTaskDelete(TaskHandle_t xTaskToDelete);
 1. 当传入的参数为 NULL, 则代表删除任务自身 (当前正在运行的任务 ) 
 2. 空闲任务会负责释放被删除任务中由系统分配的内存, 但是由用户在任务删除前申请的内存,  则需要由用户在任务被删除前提前释放, 否则将导致内存泄露 
 
-### 删除任务流程 (用起来只要这两步)
-
-1. 使用删除任务函数, 需将宏`INCLUDE_vTaskDelete`配置为 1 
-2. 入口参数输入需要删除的任务句柄 (NULL代表删除本身 ) 
-
 ### 删除任务函数的内部实现过程
 
 1. 获取所要删除任务的控制块: 通过传入的任务句柄, 判断所需要删除哪个任务, NULL代表删除自身
 2. 将被删除任务, 移除所在列表: 将该任务在所在列表中移除, 包括: 就绪、阻塞、挂起、事件等列表
 3. 判断所需要删除的任务: 如果删除任务自身, 需先添加到等待删除列表, 内存释放将在空闲任务执行,如果删除其他任务, 释放内存, 任务数量--
 4. 更新下个任务的阻塞时间: 更新下一个任务的阻塞超时时间, 以防被删除的任务就是下一个阻塞超时的任务
+
+
+
+
+
+
+
+
 
 # 任务挂起与恢复
 
