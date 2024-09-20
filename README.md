@@ -4,7 +4,7 @@
 
 **调度器保证了总是在所有可运行的任务中选择具有最高优先级的任务，并将其进入运行态**
 
-根据 configUSE_PREEMPTION （使用抢占调度器） 和 configUSE_TIME_SLICING （使用时间片轮询） 两个参数的不同，FreeRTOS涉及三种不同的调度方法
+根据 *configUSE_PREEMPTION* （使用抢占调度器） 和 *configUSE_TIME_SLICING* （使用时间片轮询） 两个参数的不同，FreeRTOS涉及三种不同的调度方法
 
 1. 时间片轮询的抢占式调度方法（configUSE_PREEMPTION=1，configUSE_TIME_SLICING=1）
 2. 不用时间片轮询的抢占式调度方法（configUSE_PREEMPTION=1，configUSE_TIME_SLICING=0）
@@ -12,7 +12,7 @@
 
 ### 什么是时间片？
 
-FreeRTOS基础时钟的一个定时周期称为一个时间片，所以其长度由 configTICK_RATE_HZ 参数决定，默认情况下为1000HZ（也即1ms）
+FreeRTOS基础时钟的一个定时周期称为一个时间片，所以其长度由 *configTICK_RATE_HZ* 参数决定，默认情况下为1000HZ（也即1ms）
 
 对于时间片轮询的抢占式调度方法，其在任务调度过程中一般满足以下两点要求
 
@@ -158,9 +158,9 @@ typedef enum
 
 举几个例子：
 
-1. xTaskCreate 表示函数返回值为 BaseType_t 结构体类型，函数被定义在 'tasks.c' 文件中，函数作用为“创建”
-2. vTaskSuspend 表示函数返回值为 void 类型，函数被定义在 'tasks.c' 文件中，函数作用为“挂起”
-3. prvTaskIsTaskSuspended 表示该函数为私有函数，仅能在 'tasks.c' 文件中使用，函数作用为“判断任务是否被挂起”
+1. xTaskCreate表示函数返回值为 BaseType_t 结构体类型，函数被定义在 'tasks.c' 文件中，函数作用为“创建”
+2. vTaskSuspend表示函数返回值为 void 类型，函数被定义在 'tasks.c' 文件中，函数作用为“挂起”
+3. prvTaskIsTaskSuspended表示该函数为私有函数，仅能在 'tasks.c' 文件中使用，函数作用为“判断任务是否被挂起”
 
 # 任务创建和删除
 
@@ -230,8 +230,8 @@ TaskHandle_t xTaskCreateStatic(TaskFunction_t pxTaskCode,
 
 上述两个任务创建函数有如下几点不同，**之后如无特殊需要将一律使用动态分配内存的方式创建任务或其他实例**
 
-1. xTaskCreateStatic 创建任务时需要用户指定`任务的任务控制块以及任务的栈空间所需的内存`，而 xTaskCreate 创建任务其存储空间被动态分配，无需用户指定
-2. xTaskCreateStatic 创建任务函数的返回值为成功创建的任务句柄，而 xTaskCreate 成功创建任务的句柄需要以参数形式提前定义并指定，同时其函数返回值仅表示任务创建成功/失败
+1. xTaskCreateStatic创建任务时需要用户指定`任务的任务控制块以及任务的栈空间所需的内存`，而xTaskCreate创建任务其存储空间被动态分配，无需用户指定
+2. xTaskCreateStatic创建任务函数的返回值为成功创建的任务句柄，而xTaskCreate成功创建任务的句柄需要以参数形式提前定义并指定，同时其函数返回值仅表示任务创建成功/失败
 
 ### 动态创建任务函数内部实现 (此函数创建的任务会立刻进入就绪态, 由任务调度器调度运行)
 
@@ -2356,7 +2356,7 @@ typedef struct tskTaskControlBlock
 #define     taskNOTIFICATION_RECEIVED    ( ( uint8_t ) 2 ) /* 任务已经收到通知。也被称为pending（挂起）。当任务成功接收到通知时，其状态将从等待通知状态切换到通知已接收状态。任务可以通过调用 ulTaskNotifyTake 函数获取通知的值，并执行相应的操作。 */
 ```
 
-## API 函数
+## 任务通知 API 概述
 
 1. **强大通用但较复杂的 xTaskNotify() 和 xTaskNotifyWait() API 函数**
 2. **用作二进制或计数信号量的更轻量级且更快的替代方案的 xTaskNotifyGive() 和 ulTaskNotifyTake() API 函数**
@@ -2452,11 +2452,11 @@ typedef enum
 
 |     eNotifyAction 值      | 对接收任务的最终影响                                         |
 | :-----------------------: | :----------------------------------------------------------- |
-|         eNoAction         | 接收任务的通知状态设置为待处理，而不更新其通知值，未使用 xTaskNotify() 中 ulValue 参数 |
-|         eSetBits          | 接收任务的通知值与 xTaskNotify() 中 ulValue 参数中传递的值进行按位或运算，例如：如果 ulValue 设置为 0x01，则接收任务的通知值中将置位第 0 位 |
-|        eIncrement         | 接收任务的通知值递增，未使用 xTaskNotify() 中 ulValue 参数   |
-| eSetValueWithoutOverwrite | 如果接收任务在调用 xTaskNotify() 之前有待处理的通知，则不执行任何操作，并且 xTaskNotify() 将返回 pdFAIL；如果在调用 xTaskNotify() 之前接收任务没有待处理的通知，则接收任务的通知值将设置为 xTaskNotify() 中 ulValue 参数中传递的值 |
-|  eSetValueWithOverwrite   | 接收任务的通知值设置为 xTaskNotify() ulValue 参数中传递的值，无论接收任务在调用 xTaskNotify() 之前是否有待处理的通知 |
+|         eNoAction         | 接收任务的通知状态设置为待处理，而不更新其通知值，未使用 xTaskNotify() 中 *ulValue* 参数 |
+|         eSetBits          | 接收任务的通知值与 xTaskNotify() 中 *ulValue* 参数中传递的值进行按位或运算，例如：如果 ulValue 设置为 0x01，则接收任务的通知值中将置位第 0 位 |
+|        eIncrement         | 接收任务的通知值递增，未使用 xTaskNotify() 中 *ulValue* 参数 |
+| eSetValueWithoutOverwrite | 如果接收任务在调用 xTaskNotify() 之前有待处理的通知，则不执行任何操作，并且 xTaskNotify() 将返回 pdFAIL；如果在调用 xTaskNotify() 之前接收任务没有待处理的通知，则接收任务的通知值将设置为 xTaskNotify() 中 *ulValue* 参数中传递的值 |
+|  eSetValueWithOverwrite   | 接收任务的通知值设置为 xTaskNotify() *ulValue* 参数中传递的值，无论接收任务在调用 xTaskNotify() 之前是否有待处理的通知 |
 
 ## xTaskNotifyWait() API 函数
 
@@ -2465,11 +2465,11 @@ xTaskNotifyWait() 是 ulTaskNotifyTake() 的功能更强大的版本，它允许
 ```c
 /**
   * @brief  任务通知的中断安全版本函数
-  * @param  ulBitsToClearOnEntry：参考 “3.6.1、ulBitsToClearOnEntry 参数” 小节
-  * @param  ulBitsToClearOnExit：参考 “3.6.2、_ulBitsToClearOnExit_ 参数” 小节
+  * @param  ulBitsToClearOnEntry：参考 “ulBitsToClearOnEntry 参数” 小节
+  * @param  ulBitsToClearOnExit：参考 “_ulBitsToClearOnExit_ 参数” 小节
   * @param  pulNotificationValue：用于传递任务的通知值，因为等待通知的函数可能由于 ulBitsToClearOnExit 参数在函数退出时收到的消息值已被更改
   * @param  xTicksToWait：调用任务应保持阻塞状态以等待其通知状态变为挂起状态的最长时间
-  * @retval 参考 “3.6.2、xTaskNotifyWait() 函数返回值” 小节
+  * @retval 参考 “xTaskNotifyWait() 函数返回值” 小节
   */
 BaseType_t xTaskNotifyWait(uint32_t ulBitsToClearOnEntry,
 						   uint32_t ulBitsToClearOnExit,
@@ -2483,7 +2483,7 @@ BaseType_t xTaskNotifyWait(uint32_t ulBitsToClearOnEntry,
 
 例如，如果参数 *ulBitsToClearOnEntry* 为 0x01，则任务通知值的位 0 将被清除，再举一个例子，将参数 *ulBitsToClearOnEntry* 设置为 0xffffffff（ULONG_MAX）将清除任务通知值中的所有位，从而有效地将值清除为 0
 
-### ulBitsToClearOnExit* 参数
+### *ulBitsToClearOnExit*参数
 
 **如果调用任务因为收到通知而退出 xTaskNotifyWait() ，或者因为在调用 xTaskNotifyWait() 时已经有通知挂起，那么在参数 *ulBitsToClearOnExit* 中设置的任何位将在任务退出 xTaskNotifyWait() 函数之前在任务的通知值中被清除**
 
@@ -2506,7 +2506,7 @@ BaseType_t xTaskNotifyWait(uint32_t ulBitsToClearOnEntry,
 
 除了上面的一些常用 API 之外，还有一些工具或不常用的 API 函数，因为启用任务通知后会在任务控制块中增加一个任务状态和一个任务通知值，因此 FreeRTOS 提供了**清除任务状态的 xTaskNotifyStateClear() API 函数和 清除任务通知值的 ulTaskNotifyValueClear() API 函数**
 
-另外增加了 "3.3、任务通知 API 概述" 小节中提到的在 xTaskNotify() API 函数上增加了 *pulPreviousNotifyValue* 参数的 xTaskNotifyAndQuery() API函数和其中断安全版本函数，上述提到的四个函数声明具体如下所述
+另外增加了 "任务通知 API 概述" 小节中提到的在 xTaskNotify() API 函数上增加了 *pulPreviousNotifyValue* 参数的 xTaskNotifyAndQuery() API函数和其中断安全版本函数，上述提到的四个函数声明具体如下所述
 
 ```c
 /**
@@ -2538,7 +2538,7 @@ BaseType_t xTaskNotifyAndQuery(TaskHandle_t xTaskToNotify,
 							   eNotifyAction eAction,
 							   uint32_t *pulPreviousNotifyValue);
 							   
- 
+
 /**
   * @brief  上述函数的中断安全版本
   * @param  pxHigherPriorityTaskWoken：通知应用程序编程者是否需要进行上下文切换
