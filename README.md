@@ -2259,7 +2259,7 @@ FreeRTOS 提供了两组 API 来对事件标志组的某些位进行置位和清
   * @brief  设置事件标志位
   * @param  xEventGroup：要设置位的事件标志组
   * @param  uxBitsToSet：指定要在事件标志组中设置的一个或多个位的按位值，例如设置为0x09表示置位3和位0（0x09 = Ob1001）
-  * @retval 调用 xEventGroupSetBits()返回时事件标志组的值
+  * @retval 返回事件标志组中的事件标志位值
   */
 EventBits_t xEventGroupSetBits(EventGroupHandle_t xEventGroup,
 							   const EventBits_t uxBitsToSet);
@@ -2268,7 +2268,7 @@ EventBits_t xEventGroupSetBits(EventGroupHandle_t xEventGroup,
   * @brief  将事件标志组某些位清零
   * @param  xEventGroup：要在其中清除位的事件标志组
   * @param  uxBitsToSet：表示要在事件标志组中清除一个或多个位的按位值
-  * @retval 返回清除指定位之前的事件标志组的值
+  * @retval 返回清零事件标志位之前事件标志组中事件标志位的值
   */
 EventBits_t xEventGroupClearBits(EventGroupHandle_t xEventGroup,
 								 const EventBits_t uxBitsToClear);
@@ -2284,14 +2284,6 @@ BaseType_t xEventGroupSetBitsFromISR(EventGroupHandle_t xEventGroup,
 
 BaseType_t xEventGroupClearBitsFromISR(EventGroupHandle_t xEventGroup,
 									   const EventBits_t uxBitsToClear);
-
-/*example1: 将事件标志组 EventGroup_Test 的位 1 和 3 置位*/
-EventBits_t return_value;
-return_value = xEventGroupSetBits(EventGroup_Test, 0x0A);
-
-/*example2: 将事件标志组 EventGroup_Test 的位 0 和 2 清零*/
-EventBits_t return_value;
-return_value = xEventGroupClearBits(EventGroup_Test, 0x05);
 ```
 
 同时 FreeRTOS 也提供了查询事件标志组当前值的 API 函数，具体如下所示
@@ -2310,144 +2302,112 @@ EventBits_t xEventGroupGetBits(EventGroupHandle_t xEventGroup);
 EventBits_t xEventGroupGetBitsFromISR(EventGroupHandle_t xEventGroup);
 ```
 
+## 等待事件标志组函数
 
+FreeRTOS 关于事件标志组提出了等待事件标志组和事件标志组同步两个比较重要的 API 函数，分别对应两种不同的使用场景，**此函数主要用于使用事件标志组进行事件的管理，而另一个函数主要用于使用事件标志组进行任务间的同步**，接下来主要详细介绍两个函数的具体用法
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-## 函数
-
-|             函数              |               描述               |
-| :---------------------------: | :------------------------------: |
-|      xEventGroupCreate()      |    使用动态方式创建事件标志组    |
-|   xEventGroupCreateStatic()   |    使用静态方式创建事件标志组    |
-|    xEventGroupClearBits()     |          清零事件标志位          |
-| xEventGroupClearBitsFromISR() |      在中断中清零事件标志位      |
-|     xEventGroupSetBits()      |          设置事件标志位          |
-|  xEventGroupSetBitsFromISR()  |      在中断中设置事件标志位      |
-|     xEventGroupWaitBits()     |          等待事件标志位          |
-|       xEventGroupSync()       | 设置事件标志位，并等待事件标志位 |
-
-### 动态方式创建事件标志组API函数
+xEventGroupWaitBits() API 函数允许任务读取事件标志组的值，并且可以选择在阻塞状态下等待事件标志组中的一个或多个事件位被设置（如果事件位尚未设置），如下所示为其具体的函数声明
 
 ```c
-EventGroupHandle_t xEventGroupCreate(void)
+/**
+  * @brief  等待事件标志组中多个事件位表示的事件成立
+  * @param  xEventGroup：所操作事件标志组的句柄
+  * @param  uxBitsToWaitFor：所等待事件位的掩码，例如设置为0x05表示等待第0位和/或第2位
+  * @param  xClearOnExit：pdTRUE表示事件标志组条件成立退出阻塞状态时将掩码指定的所有位清零；pdFALSE表示事件标志组条件成立退出阻塞状态时不将掩码指定的所有位清零
+  * @param  xWaitForAllBits：pdTRUE表示等待掩码中所有事件位都置1，条件才算成立（逻辑与）；pdFALSE表示等待掩码中所有事件位中一个置1，条件就成立（逻辑或）
+  * @param  xTicksToWait：任务进入阻塞状态的节拍数
+  * @retval 返回事件位等待完成设置或阻塞时间过期时的事件标志组值
+  */
+EventBits_t xEventGroupWaitBits(const EventGroupHandle_t xEventGroup,
+								const EventBits_t uxBitsToWaitFor,
+								const BaseType_t xClearOnExit,
+								const BaseType_t xWaitForAllBits,
+								TickType_t xTicksToWait);
 ```
-
-| 返回值 |              描述              |
-| :----: | :----------------------------: |
-|  NULL  |       事件标志组创建失败       |
-| 其他值 | 事件标志组创建成功，返回其句柄 |
-
-### 清除事件标志位API函数
-
-```c
-EventBits_t xEventGroupClearBits(EventGroupHandle_t xEventGroup,const EventBits_t uxBitsToClear)
-```
-
-|    形参     |          描述          |
-| :---------: | :--------------------: |
-| xEventGroup | 待操作的事件标志组句柄 |
-| uxBitsToSet |   待清零的事件标志位   |
-
-| 返回值 |                     描述                     |
-| :----: | :------------------------------------------: |
-|  整数  | 清零事件标志位之前事件标志组中事件标志位的值 |
-
-### 设置事件标志位API函数
-
-```c
-EventBits_t xEventGroupSetBits(EventGroupHandle_t xEventGroup, const EventBits_t uxBitsToSet)
-```
-
-|    形参     |          描述          |
-| :---------: | :--------------------: |
-| xEventGroup | 待操作的事件标志组句柄 |
-| uxBitsToSet |   待设置的事件标志位   |
-
-| 返回值 |                  描述                  |
-| :----: | :------------------------------------: |
-|  整数  | 函数返回时，事件标志组中的事件标志位值 |
-
-### 等待事件标志位API函数
-
-```c
-EventBits_t xEventGroupWaitBits( EventGroupHandle_t xEventGroup,
-                                 const EventBits_t uxBitsToWaitFor,
-                                 const BaseType_t xClearOnExit,
-                                 const BaseType_t xWaitForAllBits,
-                                 TickType_t xTicksToWait)
-```
-
-|      形参       |                             描述                             |
-| :-------------: | :----------------------------------------------------------: |
-|   xEvenrGroup   |                     等待的事件标志组句柄                     |
-| uxBitsToWaitFor |       等待的事件标志位，可以用逻辑或等待多个事件标志位       |
-|  xClearOnExit   | 成功等待到事件标志位后，清除事件标志组中对应的事件标志位，  pdTRUE ：清除uxBitsToWaitFor指定位；  pdFALSE：不清除 |
-| xWaitForAllBits | 等待 uxBitsToWaitFor 中的所有事件标志位（逻辑与）  pdTRUE：等待的位，全部为1  pdFALSE：等待的位，某个为1 |
-|  xTicksToWait   |                        等待的阻塞时间                        |
-
-|       返回值       |                       描述                       |
-| :----------------: | :----------------------------------------------: |
-| 等待的事件标志位值 |    等待事件标志位成功，返回等待到的事件标志位    |
-|       其他值       | 等待事件标志位失败，返回事件标志组中的事件标志位 |
 
 特点：
 
 ​    可以等待某一位、也可以等待多位
 
 ​    等到期望的事件后，还可以清除某些位
+
+### uxBitsToWaitFor 和 xWaitForAllBits 参数
+
+调度程序用来确定任务是否进入阻塞状态以及任务何时离开阻塞状态的条件称为 “解除阻塞条件” 。解锁条件由 *uxBitsToWaitFor* 和 *xWaitForAllBits* 参数值的组合指定：
+
+- **uxBitsToWaitFor** 指定要测试事件标志组中的哪些事件位
+- **xWaitForAllBits**指定是使用按位 OR 测试还是按位 AND 测试
+
+如果调用 xEventGroupWaitBits() 时满足解锁条件，任务将不会进入阻塞状态，下表提供了导致任务进入阻塞状态或退出阻塞状态的条件示例。表中列出的值仅显示事件标志组和 *uxBitsToWaitFor* 值的最低有效的四个二进制位，其他位均假定为零
+
+| 现有事件标志组值 | uxBitsToWaitFor | xWaitForAllBits |                          导致的结果                          |
+| :--------------: | :-------------: | :-------------: | :----------------------------------------------------------: |
+|       0000       |      0101       |     pdFALSE     | 由于事件标志组中的位 0 或位 2 均未设置，调用任务将进入阻塞状态，并且当事件标志组中的位 0 或位 2 被设置时，调用任务将离开阻塞状态 |
+|       0100       |      0101       |     pdTRUE      | 调用任务将进入阻塞状态，因为事件标志组中的位 0 和位 2 未同时设置，并且当事件标志组中的位 0 和位 2 均设置时，调用任务将离开阻塞状态 |
+|       0100       |      0110       |     pdFALSE     | 调用任务不会进入阻塞状态，因为 xWaitForAllBits 为pdFALSE，并且 uxBitsToWaitFor 指定的两个位之一已在事件标志组中设置 |
+|       0100       |      0110       |     pdTRUE      | 调用任务将进入阻塞状态，因为 xWaitForAllBits 为pdTRUE，并且事件标志组中仅已设置 uxBitsToWaitFor 指定的两个位之一。 当事件标志组中的位 2 和位 3 均被设置时，任务将离开阻塞状态 |
+
+### xClearOnExit 参数
+
+调用任务使用 *uxBitsToWaitFor* 参数指定要测试的位，并且调用任务可能需要在满足其解锁条件后将这些位清零。可以使用 xEventGroupClearBits() API 函数清除事件位，但使用该函数手动清除事件位将导致应用程序代码中出现竞争条件
+
+因此提供 *xClearOnExit* 参数就是为了避免这些潜在的竞争条件。如果 *xClearOnExit* 设置为 pdTRUE，则事件位的测试和清除对于调用任务来说是一个原子操作（不能被其他任务或中断中断），**简单来说就是如果 xClearOnExit 设置为 pdTRUE，则调用任务退出后会将事件标志组所有位清零，否则不清零**
+
+如果 xEventGroupWaitBits() 由于满足调用任务的解锁条件而返回，则返回值是满足调用任务的解锁条件时事件标志组的值（如果 xClearOnExit 为 pdTRUE，则在自动清除任何位之前），在这种情况下，返回值也将满足解锁条件。如果 xEventGroupWaitBits() 因为 xTicksToWait 参数指定的退出阻塞时间到期而返回，则返回值为退出阻塞时间到期时事件标志组的值，在这种情况下，返回值将不满足解锁条件
+
+## 事件标志组同步函数
+
+**提供 xEventGroupSync() 是为了允许两个或多个任务使用事件标志组来相互同步**。该函数允许任务设置事件标志组中的一个或多个事件位，然后等待同一事件标志组中指定的事件位组合被设置
+
+如下所示为 xEventGroupSync() API 函数的具体声明
+
+```c
+/**
+  * @brief  事件标志组同步
+  * @param  uxBitsToSet：设置和测试位的事件标志组
+  * @param  uxBitsToWaitFor：指定事件标志组中要测试的一个或多个事件位的按位值
+  * @param  xTicksToWait：任务进入阻塞状态的节拍数
+  * @retval 返回函数退出时事件标志组的值
+  */
+EventBits_t xEventGroupSync(EventGroupHandle_t xEventGroup,
+							const EventBits_t uxBitsToSet,
+							const EventBits_t uxBitsToWaitFor,
+							TickType_t xTicksToWait);
+```
+
+### 函数返回值
+
+xEventGroupSync() 函数返回函数退出时事件标志组的值，可能有以下两种情况
+
+1. xEventGroupSync() 函数的 *uxBitsToWaitFor* 参数指定了调用任务的解锁条件，**如果该函数由于满足解锁条件而返回，则 \*uxBitsToWaitFor\* 指定的事件位将在 xEventGroupSync() 返回之前清回零，并且在自动清为零之前会将事件标志组的值作为函数返回值返回**
+2. 如果 xEventGroupSync() 由于 *xTicksToWait* 参数指定的阻塞时间到期而返回，**则返回值为阻塞时间到期时事件标志组的值**，在这种情况下，返回值将不满足调用任务的解锁条件
+
+### 应用举例
+
+举个简单的例子就容易理解：
+
+假设目前有两个任务，分别为 TASK1 和 TASK2 ，如果 TASK1 被执行过程中因为延时等原因先于 TASK2 调用了 xEventGroupSync() 函数，参数 *uxBitsToSet* 被设置为 0x01（0000 0001），参数 *uxBitsToWaitFor* 被设置为 0x05（0000 0101），则 TASK1 执行到该函数时会将事件标志组中位 0 的值置 1 ，然后进入阻塞状态，等待位 2 和位 0 同时被置 1 ；
+
+如果 TASK2 与 TASK1 一样，只不过落后于 TASK1 执行 xEventGroupSync() 函数，并且参数 *uxBitsToSet* 被设置为 0x04（0000 0100），当 TASK2 执行该函数时会将事件标志组中位 2 的值置 1 ，此时满足解锁条件，所以 TASK2 不会进入阻塞状态，同时 TASK1 也满足解锁条件，从阻塞状态中退出，这时候假设任务优先级一致，则 TASK1 和 TASK2 会同时从同步点开始运行后续的程序代码，从而达到同步的目的
+
+## 删除事件标志组
+
+```c
+/**
+  * @brief  删除事件标志组
+  * @param  xEventGroup：要删除事件标志组的句柄
+  * @retval None
+  */
+void vEventGroupDelete(EventGroupHandle_t xEventGroup);
+```
+
+
+
+
+
+
+
+
 
 ### 同步函数
 
