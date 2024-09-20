@@ -46,10 +46,44 @@ FreeRTOS 一共支持三种任务调度方式:
 
 FreeRTOS 中任务共存在4种状态: 
 
-1. 运行态: 当任务实际执行时，它被称为处于`运行状态`。 任务当前正在使用处理器。 如果运行RTOS 的处理器只有一个内核， 那么在任何给定时间内都只能有一个任务处于运行状态。
-2. 就绪态: 如果该任务已经能够被执行, 但当前还未被执行（不处于阻塞或挂起状态），因为同等或更高优先级的不同任务已经处于运行状态，那么该任务处于就绪状态。
-3. 阻塞态: 如果一个任务因延时或等待外部事件发生, 那么这个任务就处于阻塞态，阻塞态的任务不能直接进入`运行状态`，处于`阻塞状态`的任务通常有一个`超时时间`， 超时后任务将被解除阻塞，即使该任务所等待的事件没有发生。
-4. 挂起态: 与`阻塞状态`下的任务一样， `挂起状态`下的任务不能被直接进入`运行状态`，但处于挂起状态的任务没有超时时间。相反，任务只能通过`vTaskSuspend()`或`xTaskResume()`才会进入或退出挂起状态。
+1. 运行状态：**一个任务正在被处理器执行**， 如果运行RTOS 的处理器只有一个内核， 那么在任何给定时间内都只能有一个任务处于运行状态。
+
+2. 就绪状态：**一个任务处于未运行状态但是既没有阻塞也没有挂起**，处于就绪状态的任务当前尚未运行，但随时可以进入运行状态
+
+    下图为一个任务在四种不同状态（阻塞状态、挂起状态、就绪状态和运行状态）下完整的状态转移机制图
+
+3. 阻塞状态：**一个任务正在等待某个事件发生**，调用可以进入阻塞状态的API函数可以使任务进入阻塞状态，等待的事件通常为以下两种事件
+
+    1. 时间相关事件：如 vTaskDelay() 或 vTaskDelayUntil()，处于运行状态的任务调用这两个延时函数就会进入阻塞状态，等待延时时间结束后会进入就绪状态，待任务调度后又会进入运行状态
+    2. 同步相关事件：例如尝试进行读取空队列、尝试写入满队列、尝试获取尚未被释放的二值信号量等等操作都会使任务进入阻塞状态，这些同步事件会在后面的章节详细讲解
+
+4. 挂起状态：**一个任务暂时脱离调度器的调度**，挂起状态的任务对调度器来说不可见
+
+    1. 让一个任务进入挂起状态的唯一方法是调用 vTaskSuspend() API函数
+    2. 将一个任务从挂起状态唤醒的唯一方法是调用 vTaskResume() API函数（在中断中应调用挂起唤醒的中断安全版本vTaskResumeFromISR() API函数）
+
+```c
+/**
+  * @brief  挂起某个任务
+  * @param  pxTaskToSuspend：被挂起的任务的句柄，通过传入NULL来挂起自身
+  * @retval None
+  */
+void vTaskSuspend(TaskHandle_t pxTaskToSuspend);
+ 
+/**
+  * @brief  将某个任务从挂起状态恢复
+  * @param  pxTaskToResume：正在恢复的任务的句柄
+  * @retval None
+  */
+void vTaskResume(TaskHandle_t pxTaskToResume);
+ 
+/**
+  * @brief  vTaskResume的中断安全版本
+  * @param  pxTaskToResume：正在恢复的任务的句柄
+  * @retval 返回退出中断之前是否需要进行上下文切换(pdTRUE/pdFALSE)
+  */
+BaseType_t xTaskResumeFromISR(TaskHandle_t pxTaskToResume);
+```
 
 四种任务状态之间的转换图：
 
@@ -63,44 +97,111 @@ FreeRTOS 中任务共存在4种状态:
 2. 阻塞列表: pxDelayedTaskList
 3. 挂起列表: xSuspendedTaskList
 
+## 源码函数命名规律
+
+**FreeRTOS源码中函数命名规律**：FreeRTOS源码中各个函数并非随机命名，而是有规律的命名，这样方便使用者看到名字就能获得该函数更多的信息，其函数名一般由 ① 函数返回值类型简写，② 函数所在文件 和 ③ 函数作用名称这三部分组成
+
+1. 函数返回值类型简写主要有：
+
+    1. 'u'表示'unsigned'
+    2. 'c'表示'char'
+    3. 's'表示'int16_t(short)'
+    4. 'l'表示'int32_t(long)'
+    5. 'p'表示指针类型变量
+    6. 'x'表示'BaseType_t'结构体和其他非标准类型的变量名
+    7. 'uc'表示'UBaseType_t'结构体
+    8. 'v'表示'void'
+    9. 'prv'表示私有函数无返回值
+
+    这些简写可以自由组合在一起，例如 'pc' 表示 'char *' 类型，'uc' 表示 'unsigned char' 类型
+
+2. 函数所在文件：
+
+    1. 'CoRoutine'表示该函数定义在'coroutine.c'文件中的
+    2. 'EventGroup'表示该函数定义在'event_groups.c'文件中的
+    3. 'List'表示该函数定义在'list.c'文件中的
+    4. 'Queue'表示该函数定义在'queue.c'文件中的
+    5. 'StreamBuffer'表示该函数定义在'stream_buffer.c'文件中的
+    6. 'Task'表示该函数定义在'tasks.c'文件中的
+    7. 'Timer'表示该函数定义在'timers.c'文件中的
+    8. 'Port'表示该函数定义在'port.c'或'heap_x.c'文件中的
+
+举几个例子：
+
+1. xTaskCreate 表示函数返回值为 BaseType_t 结构体类型，函数被定义在 'tasks.c' 文件中，函数作用为“创建”
+2. vTaskSuspend 表示函数返回值为 void 类型，函数被定义在 'tasks.c' 文件中，函数作用为“挂起”
+3. prvTaskIsTaskSuspended 表示该函数为私有函数，仅能在 'tasks.c' 文件中使用，函数作用为“判断任务是否被挂起”
+
 # 任务创建和删除
 
-任务的创建和删除本质就是调用FreeRTOS的API函数
+## 一个最简单的任务函数
 
-|       API函数       |       描述       |
-| :-----------------: | :--------------: |
-|    xTaskCreate()    | 动态方式创建任务 |
-| xTaskCreateStatic() | 静态方式创建任务 |
-|    vTaskDelete()    |     删除任务     |
-
-**动态创建任务**: 任务的任务控制块以及任务的栈空间所需的内存, 均由 FreeRTOS 从 FreeRTOS 管理的堆中分配
-**静态创建任务**: 任务的任务控制块以及任务的栈空间所需的内存, 需用户分配提供
-
-## 动态创建任务函数
+**FreeRTOS中任务是一个永远不会退出的 C 函数**，因此通常是作为无限循环实现，其不允许以任何方式从实现函数中返回，如果一个任务不再需要，可以显示的将其删除，其典型的任务函数结构如下所示
 
 ```c
-BaseType_t xTaskCreate
-(     
-    TaskFunction_t                pxTaskCode,        /* 指向任务函数的指针 */
-    const char *const             pcName,         /* 任务名字, 最大长度configMAX_TASK_NAME_LEN */
-    const configSTACK_DEPTH_TYPE  usStackDepth,     /* 任务堆栈大小, 注意字为单位 */
-    void *const                   pvParameters,    /* 传递给任务函数的参数 */
-    UBaseType_t                   uxPriority,        /* 任务优先级, 范围: 0 ~ configMAX_PRIORITIES - 1 */
-    TaskHandle_t *const           pxCreatedTask     /* 任务句柄, 就是任务的任务控制块*/
-);
+/**
+  * @brief  任务函数
+  * @retval None
+  */
+void ATaskFunction(void *pvParameters)  
+{
+	/*初始化或定义任务需要使用的变量*/
+	int iVariable = 0;
+	
+	for(;;)
+	{
+		/*完成任务的功能代码*/
+	
+	}
+	/*跳出循环的任务需要被删除*/
+	vTaskDelete(NULL);
+}
 ```
 
+## 创建任务函数
 
-|                返回值                 |     描述     |
-| :-----------------------------------: | :----------: |
-|                pdPASS                 | 任务创建成功 |
-| errCOULD_NOT_ALLOCATE_REQUIRED_MEMORY | 任务创建失败 |
+```c
+/**
+  * @brief  动态分配内存创建任务函数，需将宏configSUPPORT_DYNAMIC_ALLOCATION配置为 1 
+  * @param  pxTaskCode：指向任务函数的指针
+  * @param  pcName：任务名称，单纯用于辅助调试，最大长度configMAX_TASK_NAME_LEN
+  * @param  usStackDepth：任务堆栈大小, 注意字（word）为单位
+  * @param  pvParameters：传递给任务函数的参数
+  * @param  uxPriority：任务优先级, 范围: 0 ~ configMAX_PRIORITIES - 1
+  * @param  pxCreatedTask：任务句柄，可通过该句柄进行删除/挂起任务等操作
+  * @retval pdTRUE：创建成功，errCOULD_NOT_ALLOCATE_REQUIRED_MEMORY：内存不足创建失败
+  */
+BaseType_t xTaskCreate(TaskFunction_t pxTaskCode,
+					   const char * const pcName,
+					   unsigned short usStackDepth,
+					   void *pvParameters,
+					   UBaseType_t uxPriority,
+					   TaskHandle_t *pxCreatedTask);
 
-### 实现动态创建任务流程 (用起来只需这三步)
+/**
+  * @brief  静态分配内存创建任务函数，需将宏configSUPPORT_STATIC_ALLOCATION配置为 1 
+  * @param  pxTaskCode：任务函数
+  * @param  pcName：任务名称
+  * @param  usStackDepth：任务栈深度，单位为字（word）
+  * @param  pvParameters：任务参数
+  * @param  uxPriority：任务优先级
+  * @param  puxStackBuffer：任务栈空间数组
+  * @param  pxTaskBuffer：任务控制块存储空间
+  * @retval 创建成功的任务句柄
+  */
+TaskHandle_t xTaskCreateStatic(TaskFunction_t pxTaskCode,
+							   const char * const pcName,
+							   uint32_t ulStackDepth,
+							   void *pvParameters,
+							   UBaseType_t uxPriority,
+							   StackType_t * const puxStackBuffer,
+							   StaticTask_t * const pxTaskBuffer);
+```
 
-1. 将宏`configSUPPORT_DYNAMIC_ALLOCATION`配置为 1 
-2. 定义函数入口参数
-3. 编写任务函数
+上述两个任务创建函数有如下几点不同，**之后如无特殊需要将一律使用动态分配内存的方式创建任务或其他实例**
+
+1. xTaskCreateStatic 创建任务时需要用户指定`任务的任务控制块以及任务的栈空间所需的内存`，而 xTaskCreate 创建任务其存储空间被动态分配，无需用户指定
+2. xTaskCreateStatic 创建任务函数的返回值为成功创建的任务句柄，而 xTaskCreate 成功创建任务的句柄需要以参数形式提前定义并指定，同时其函数返回值仅表示任务创建成功/失败
 
 ### 动态创建任务函数内部实现 (此函数创建的任务会立刻进入就绪态, 由任务调度器调度运行)
 
@@ -135,25 +236,7 @@ typedef struct tskTaskControlBlock *TaskHandle_t;
 >
 > 每个任务都有属于自己的任务控制块, 类似身份证
 
-## 静态创建任务函数
 
-```c
-TaskHandle_t xTaskCreateStatic
-(
-    TaskFunction_t            pxTaskCode,               /* 指向任务函数的指针 */
-    const char *const         pcName,                   /* 任务函数名 */
-    const uint32_t            ulStackDepth,             /* 任务堆栈大小注意字为单位 */
-    void *const               pvParameters,             /* 传递的任务函数参数 */
-    UBaseType_t               uxPriority,               /* 任务优先级 */
-    StackType_t *const        puxStackBuffer,           /* 任务堆栈, 一般为数组, 由用户分配 */
-    StaticTask_t *const       pxTaskBuffer              /* 任务控制块指针, 由用户分配 */
-);
-```
-
-| 返回值 |                 描述                 |
-| :----: | :----------------------------------: |
-|  NULL  | 用户没有提供相应的内存, 任务创建失败 |
-| 其他值 |        任务句柄, 任务创建成功        |
 
 ### 静态创建任务使用流程 (用起来只需这五步)
 
