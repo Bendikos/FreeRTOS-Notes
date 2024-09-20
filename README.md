@@ -2258,12 +2258,12 @@ FreeRTOS 提供了两组 API 来对事件标志组的某些位进行置位和清
 /**
   * @brief  设置事件标志位
   * @param  xEventGroup：要设置位的事件标志组
-  * @param  uxBitsToSet：指定要在事件标志组中设置的一个或多个位的按位值，例如设置为0x09表示置位3 和位0
+  * @param  uxBitsToSet：指定要在事件标志组中设置的一个或多个位的按位值，例如设置为0x09表示置位3和位0（0x09 = Ob1001）
   * @retval 调用 xEventGroupSetBits()返回时事件标志组的值
   */
 EventBits_t xEventGroupSetBits(EventGroupHandle_t xEventGroup,
 							   const EventBits_t uxBitsToSet);
- 
+
 /**
   * @brief  将事件标志组某些位清零
   * @param  xEventGroup：要在其中清除位的事件标志组
@@ -2272,7 +2272,7 @@ EventBits_t xEventGroupSetBits(EventGroupHandle_t xEventGroup,
   */
 EventBits_t xEventGroupClearBits(EventGroupHandle_t xEventGroup,
 								 const EventBits_t uxBitsToClear);
- 
+
 /**
   * @brief  上述两个函数的中断安全版本
   * @param  pxHigherPriorityTaskWoken：用于通知应用程序编写者是否应该执行上下文切换
@@ -2281,14 +2281,14 @@ EventBits_t xEventGroupClearBits(EventGroupHandle_t xEventGroup,
 BaseType_t xEventGroupSetBitsFromISR(EventGroupHandle_t xEventGroup,
 									 const EventBits_t uxBitsToSet,
 									 BaseType_t *pxHigherPriorityTaskWoken);
- 
+
 BaseType_t xEventGroupClearBitsFromISR(EventGroupHandle_t xEventGroup,
 									   const EventBits_t uxBitsToClear);
- 
+
 /*example1: 将事件标志组 EventGroup_Test 的位 1 和 3 置位*/
 EventBits_t return_value;
 return_value = xEventGroupSetBits(EventGroup_Test, 0x0A);
- 
+
 /*example2: 将事件标志组 EventGroup_Test 的位 0 和 2 清零*/
 EventBits_t return_value;
 return_value = xEventGroupClearBits(EventGroup_Test, 0x05);
