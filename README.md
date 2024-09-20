@@ -1681,7 +1681,7 @@ BaseType_t xQueueReset(QueueHandle_t xQueue);
 
 如下图展示了用作 FIFO 的队列写入和读取数据的情况的具体过程
 
-![队列读写过程](picture\队列读写过程.png)
+![队列读写过程](picture/队列读写过程.png)
 
 # 信号量
 
@@ -1873,7 +1873,7 @@ UBaseType_t uxSemaphoreGetCount(SemaphoreHandle_t xSemaphore);
 
 互斥锁可以被视为一个与正在共享的资源相关联的令牌，对于合法访问资源的任务，它必须首先成功 “获取” 令牌，成为资源的持有者，当持有者完成对资源的访问之后，其需要 ”归还” 令牌，只有 “归还” 令牌之后，该令牌才可以再次被其他任务所 “获取” ，这样保证了互斥的对共享资源的访问，上述机制如下图所示
 
-![互斥信号量](picture\互斥信号量.png)
+![互斥信号量](picture/互斥信号量.png)
 
 ## 死锁现象
 
