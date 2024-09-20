@@ -2291,7 +2291,7 @@ void vEventGroupDelete(EventGroupHandle_t xEventGroup);
 
 ## 任务通知的简介
 
-任务通知：用来通知任务的，任务控制块中的结构体成员变量 ulNotifiedValue就是这个通知值。
+任务通知：用来通知任务的，任务控制块中的结构体成员变量 ulNotifiedValue 就是这个通知值。
 
 - 使用队列、信号量、事件标志组时都需另外创建一个结构体，通过中间的结构体进行间接通信！
 
@@ -2315,22 +2315,23 @@ void vEventGroupDelete(EventGroupHandle_t xEventGroup);
 
 ### 任务通知的优势及劣势
 
-任务通知的优势：
+任务通知在性能和 RAM 占用上存在优势，具体为以下两点：
 
-1. 效率更高    使用任务通知向任务发送事件或数据比使用队列、事件标志组或信号量快得多
+1. 使用任务通知向任务发送事件或数据比使用队列、信号量或事件组执行等效操作要快得多
 
-2. 使用内存更小    使用其他方法时都要先创建对应的结构体，使用任务通知时无需额外创建结构体
+2. 启用任务通知功能的固定开销仅为每个任务 8 个字节的 RAM ，而队列、信号量、事件组等在使用前都必须创建，占用空间较大
 
 任务通知的劣势：
 
-1. 无法发送数据给ISR    ISR没有任务结构体，所以无法给ISR发送数据。但是ISR可以使用任务通知的功能，发数据给任务。
-1. 无法广播给多个任务    任务通知只能是被指定的一个任务接收并处理 
-1. 无法缓存多个数据    任务通知是通过更新任务通知值来发送数据的，任务结构体中只有一个任务通知值，只能保持一个数据。
-1. 发送受阻不支持阻塞    发送方无法进入阻塞状态等待
+1. 通信对象可用于将事件和数据从 ISR 发送到任务，以及从任务发送到 ISR；**任务通知只能用于将事件和数据从 ISR 发送到任务，不能用于将事件或数据从任务发送到 ISR**
+1. 任何知道通信对象句柄的任务和 ISR 都可以访问通信对象，因此多个任务或 ISR 都可以发送或接收消息；任务通知只能将事件和数据发送到某个具体的接收任务中，发送的事件和数据只能由接收任务使用处理
+1. 队列是一种通信对象，一次可以保存多个数据项，已发送到队列但尚未从队列接收的数据将缓冲在队列对象内；任务通知通过更新接收任务的通知值来向任务发送数据，**任务的通知值一次只能保存一个值**
+1. 事件组是一种通信对象，可用于一次向多个任务发送事件；**任务通知直接发送给接收任务，因此只能由接收任务处理**
+1. 如果通信对象暂时处于无法向其写入更多数据或事件的状态（例如，当队列已满时，无法向队列发送更多数据），则尝试写入该对象的任务可以选择进入阻塞状态以等待其写操作完成；如果任务尝试向已经有待处理通知的任务发送任务通知，则发送任务不可能在阻塞状态下等待接收任务重置其通知状态
 
 ## 任务通知值和通知状态
 
-任务都有一个结构体：任务控制块TCB，它里边有两个结构体成员变量：
+设置 configUSE_TASK_NOTIFICATIONS 参数为 1 启动任务通知功能，启动该功能之后，**会在每个任务的 TCB （任务控制块）中增加 8 字节空间，此时每个任务都有一个“通知状态”（可以是 “挂起” 或 “未挂起” ）和一个 “通知值” （32 位无符号整数）**。当任务收到通知时，其通知状态将设置为挂起，当任务读取其通知值时，其通知状态将设置为未挂起
 
 ```c
 typedef struct tskTaskControlBlock 
@@ -2345,20 +2346,6 @@ typedef struct tskTaskControlBlock
 #define  configTASK_NOTIFICATION_ARRAY_ENTRIES    1      /* 定义任务通知数组的大小, 默认: 1 */
 ```
 
-- 一个是 uint32_t 类型，用来表示通知值
-
-- 一个是 uint8_t 类型，用来表示通知状态
-
-### 任务通知值
-
-任务通知值的更新方式有多种类型：
-
-- 计数值（数值累加，类似信号量）
-
-- 相应位置一（类似事件标志组）
-
-- 任意数值（支持覆写和不覆写，类似队列）
-
 ### 任务通知状态
 
 其中任务通知状态共有3种取值：
@@ -2368,6 +2355,149 @@ typedef struct tskTaskControlBlock
 #define     taskWAITING_NOTIFICATION     ( ( uint8_t ) 1 ) /* 任务在等待通知, 提前调用接收函数 */
 #define     taskNOTIFICATION_RECEIVED    ( ( uint8_t ) 2 ) /* 任务在等待接收, 提前调用发送函数 */
 ```
+
+## xTaskNotifyGive() 和 ulTaskNotifyTake() API 函数
+
+xTaskNotifyGive() 直接向任务发送通知，**并对接收任务的通知值进行递增**（加1，因为是模拟信号量），**如果接收任务尚未挂起，则调用 xTaskNotifyGive() 会将接收任务的通知状态设置为挂起**，该 API 实际上是作为宏实现的，而不是函数，其具体声明如下所述
+
+```c
+/**
+  * @brief  任务通知用作轻量级且更快的二进制或计数信号量替代方案时所使用的通知发送函数
+  * @param  xTaskToNotify：通知发送到的任务的句柄
+  * @retval 只会返回pdPASS
+  */
+BaseType_t xTaskNotifyGive(TaskHandle_t xTaskToNotify);
+ 
+/**
+  * @brief  上述函数的的中断安全版本函数
+  * @param  xTaskToNotify：通知发送到的任务的句柄
+  * @param  pxHigherPriorityTaskWoken：用于通知应用程序编写者是否应该执行上下文切换
+  * @retval None
+  */
+void vTaskNotifyGiveFromISR(TaskHandle_t xTaskToNotify,
+							BaseType_t *pxHigherPriorityTaskWoken);
+```
+
+当一个任务使用 xTaskNotifyGive() API 函数将通知值用作二值或等效计数信号量时， 则被通知的任务应使用 ulTaskNotifyTake() API 函数来接收或等待通知值
+
+ulTaskNotifyTake() 允许任务在阻塞状态下等待其通知值大于零，并在返回之前递减（减一）或清除任务的通知值，其具体函数声明如下所述
+
+```c
+/**
+  * @brief  任务通知被用作更快、更轻的二进制或计数信号量替代时使用通知接收函数
+  * @param  xClearCountOnExit：设置为pdTRUE，则该函数返回之前，调用任务的通知值将被清零；设置为pdFASLE，并且通知值大于0，则调用任务的通知值将在该函数返回之前递减
+  * @param  xTicksToWait：调用任务应保持阻塞状态以等待其通知值大于零的最长时间
+  * @retval 阻塞时间到期也没能等到消息则返回 0 ，阻塞时间到期前等到消息则返回之前的通知值
+  */
+uint32_t ulTaskNotifyTake(BaseType_t xClearCountOnExit, TickType_t xTicksToWait);
+```
+
+## xTaskNotify() API 函数
+
+xTaskNotify() 是 xTaskNotifyGive() 的功能更强大的版本，可用于通过以下任意方式更新接收任务的通知值
+
+1. 接收任务的通知值递增（加一），在这种情况下 xTaskNotify() **相当于 xTaskNotifyGive()**
+2. 接收任务的通知值中设置一位或多位，这允许任务的通知值用作**事件标志组**的更轻量级和更快的替代方案
+3. 将一个全新的数字写入接收任务的通知值，但前提是接收任务自上次更新以来已读取其通知值，这允许任务的通知值提供与**长度为 1 的队列**提供的功能类似的功能
+4. 将一个全新的数字写入接收任务的通知值，即使接收任务自上次更新以来尚未读取其通知值，这允许任务的通知值提供与 xQueueOverwrite() API 函数提供的功能类似的功能，由此产生的行为有时被称为**“邮箱”**
+
+xTaskNotify() 比 xTaskNotifyGive() 更灵活、更强大，并且由于额外的灵活性和强大功能，它的使用也稍微复杂一些，使用 xTaskNotify() 函数时，如果接收任务尚未挂起，则调用 xTaskNotify() 将始终将其设置为挂起状态，如下所示为其具体函数声明
+
+```c
+/**
+  * @brief  任务通知函数
+  * @param  xTaskToNotify：通知发送到的任务的句柄
+  * @param  ulValue：ulValue的使用方式取决于eAction值，参考 “eAction 参数” 小节
+  * @param  eAction：一个枚举类型，指定如何更新接收任务的通知值，参考 “eAction 参数” 小节
+  * @retval 除 “eAction 参数” 小节提到的一种情况外，均返回pdPASS
+  */
+BaseType_t xTaskNotify(TaskHandle_t xTaskToNotify,
+					   uint32_t ulValue,
+					   eNotifyAction eAction);
+ 
+/**
+  * @brief  任务通知的中断安全版本函数
+  * @param  xTaskToNotify：通知发送到的任务的句柄
+  * @param  ulValue：ulValue的使用方式取决于eAction值，参考 “eAction 参数” 小节
+  * @param  eAction：一个枚举类型，指定如何更新接收任务的通知值，参考 “eAction 参数” 小节
+  * @param  pxHigherPriorityTaskWoken：用于通知应用程序编写者是否应该执行上下文切换
+  * @retval 除 “eAction 参数” 小节提到的一种情况外，均返回pdPASS
+  */
+BaseType_t xTaskNotifyFromISR(TaskHandle_t xTaskToNotify,
+							  uint32_t ulValue,
+							  eNotifyAction eAction
+							  BaseType_t *pxHigherPriorityTaskWoken);
+```
+
+### eAction 参数
+
+eAction 参数是一个 eNotifyAction 枚举类型，其定义了 5 中不同枚举类型，用于模拟二值信号量、计数信号量、队列、事件组和 ”邮箱“ 等功能，其具体定义如下所述
+
+|     eNotifyAction 值      | 对接收任务的最终影响                                         |
+| :-----------------------: | :----------------------------------------------------------- |
+|         eNoAction         | 接收任务的通知状态设置为待处理，而不更新其通知值，未使用 xTaskNotify() 中 ulValue 参数 |
+|         eSetBits          | 接收任务的通知值与 xTaskNotify() 中 ulValue 参数中传递的值进行按位或运算，例如：如果 ulValue 设置为 0x01，则接收任务的通知值中将置位第 0 位 |
+|        eIncrement         | 接收任务的通知值递增，未使用 xTaskNotify() 中 ulValue 参数   |
+| eSetValueWithoutOverwrite | 如果接收任务在调用 xTaskNotify() 之前有待处理的通知，则不执行任何操作，并且 xTaskNotify() 将返回 pdFAIL；如果在调用 xTaskNotify() 之前接收任务没有待处理的通知，则接收任务的通知值将设置为 xTaskNotify() 中 ulValue 参数中传递的值 |
+|  eSetValueWithOverwrite   | 接收任务的通知值设置为 xTaskNotify() ulValue 参数中传递的值，无论接收任务在调用 xTaskNotify() 之前是否有待处理的通知 |
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 ### 任务通知相关API函数介绍
 
