@@ -307,7 +307,7 @@ UBaseType_t uxTaskPriorityGet(TaskHandle_t pxTask);
 
 ## 延时函数
 
-学习STM32时经常会使用到HAL库的延时函数HAL_Delay()，FreeRTOS也同样提供了vTaskDelay() 和 vTaskDelayUntil() 两个 API延时函数，如下所述
+学习STM32时经常会使用到HAL库的延时函数HAL_Delay()，FreeRTOS也同样提供了vTaskDelay()和 vTaskDelayUntil()两个API延时函数，如下所述
 
 ```c
 /**
@@ -650,9 +650,9 @@ typedef struct xLIST
 
 1. 在该结构体中,  包含了两个宏, 这两个宏是确定的已知常量,  FreeRTOS 通过检查这两个常量的值, 
 来判断列表的数据在程序运行过程中, 是否遭到破坏 , 该功能一般用于调试,  默认是不开启的 
-2. 成员 uxNumberOfItems, 用于记录列表中列表项的个数 (不包含 xListEnd ) 
-3. 成员 pxIndex 用于指向列表中的某个列表项, 一般用于遍历列表中的所有列表项 
-4. 成员变量 xListEnd 是一个迷你列表项, 排在最末尾 
+2. 成员*uxNumberOfItems*, 用于记录列表中列表项的个数 (不包含 xListEnd ) 
+3. 成员*pxIndex*用于指向列表中的某个列表项, 一般用于遍历列表中的所有列表项 
+4. 成员变量*xListEnd*是一个迷你列表项, 排在最末尾 
 
 ![列表结构示意图](picture/列表结构示意图.png)
 
@@ -674,10 +674,10 @@ struct xLIST_ITEM
 typedef struct xLIST_ITEM ListItem_t;
 ```
 
-1. 成员变量 xItemValue 为列表项的值, 这个值多用于按升序对列表中的列表项进行排序 
-2. 成员变量 pxNext 和 pxPrevious 分别用于指向列表中列表项的下一个列表项和上一个列表项 
-3. 成员变量 pvOwner 用于指向包含列表项的对象 (通常是任务控制块 )  
-4. 成员变量 pxContainer 用于指向列表项所在列表。 
+1. 成员变量*xItemValue*为列表项的值, 这个值多用于按升序对列表中的列表项进行排序 
+2. 成员变量*pxNext*和*pxPrevious*分别用于指向列表中列表项的下一个列表项和上一个列表项 
+3. 成员变量*pvOwner*用于指向包含列表项的对象 (通常是任务控制块 )  
+4. 成员变量*pxContaine*用于指向列表项所在列表。 
 
 ![列表项结构示意图](picture/列表项结构示意图.png)
 
@@ -696,9 +696,9 @@ struct xMINI_LIST_ITEM
 typedef struct xMINI_LIST_ITEM MiniListItem_t;
 ```
 
-1. 成员变量 xItemValue 为列表项的值, 这个值多用于按升序对列表中的列表项进行排序 
-2. 成员变量 pxNext 和 pxPrevious 分别用于指向列表中列表项的下一个列表项和上一个列表项 
-3. 迷你列表项只用于标记列表的末尾和挂载其他插入列表中的列表项, 因此不需要成员变量 pxOwner 和 pxContainer, 以节省内存开销 
+1. 成员变量*xItemValue*为列表项的值, 这个值多用于按升序对列表中的列表项进行排序 
+2. 成员变量*pxNext*和*pxPrevious*分别用于指向列表中列表项的下一个列表项和上一个列表项 
+3. 迷你列表项只用于标记列表的末尾和挂载其他插入列表中的列表项, 因此不需要成员变量*pxOwner*和*pxContainer*, 以节省内存开销 
 
 ![迷你列表项结构示意图](picture/迷你列表项结构示意图.png)
 
@@ -732,10 +732,6 @@ void vListInitialise(List_t *const pxList)
 }
 ```
 
-|  形参  |     描述     |
-| :----: | :----------: |
-| pxList | 待初始化列表 |
-
 初始化后列表结构: 
 
 ![初始化后列表结构](picture/初始化后列表结构.png)
@@ -752,10 +748,6 @@ void vListInitialiseItem( ListItem_t *const pxItem )
     listSET_SECOND_LIST_ITEM_INTEGRITY_CHECK_VALUE( pxItem );
 }
 ```
-
-|  形参  |      描述      |
-| :----: | :------------: |
-| pxItem | 待初始化列表项 |
 
 初始化后的列表项结构: 
 
@@ -2552,36 +2544,27 @@ BaseType_t xTaskNotifyAndQueryFromISR(TaskHandle_t xTaskToNotify,
 
 # 软件定时器
 
-## 软件定时器的简介
+## 软件定时器回调函数
 
-- 定时器:
-    - 从指定的时刻开始，经过一个指定时间，然后触发一个超时事件，用户可自定义定时器的周期
+软件定时器的回调函数**是一个返回值为 void 类型，并且只有软件定时器句柄一个参数的 C 语言函数**，其函数的具体原型如下所述
 
-- 硬件定时器:
-    - 芯片本身自带的定时器模块，硬件定时器的精度一般很高，每次在定时时间到达之后就会自动触发一个中断，用户在**中断服务函数**中处理信息。
-- 软件定时器
-    - 是指具有定时功能的软件，可设置定时周期，当指定时间到达后要调用回调函数（也称超时函数），用户在**回调函数**中处理信息
+```c
+/**
+  * @brief  软件定时器回调函数
+  * @param  xTimer：软件定时器句柄
+  * @retval None
+  */
+void ATimerCallback(TimerHandle_t xTimer)
+{
+	/* do something */
+}
+```
 
-软件定时器优缺点？
-
-优点:
-
-- 硬件定时器数量有限，而软件定时器理论上只需有足够内存，就可以创建多个
-- 使用简单、成本低
-
-缺点:
-
-- 软件定时器相对硬件定时器来说，精度没有那么高（因为它以系统时钟为基准，系统时钟中断优先级又是最低，容易被打断）。 对于需要高精度要求的场合，不建议使用软件定时器。
-
-软件定时器特点:
-
-**可裁剪**    软件定时器是可裁剪可配置的功能， 如果要使能软件定时器，需将`configUSE_TIMERS`配置项配置成 1 
-
-**单次和周期**    软件定时器支持设置成：单次定时器或周期定时器
-
-> 软件定时器的超时回调函数是由软件定时器服务任务调用的，软件定时器的超时回调函数本身不是任务，因此不能在该回调函数中使用可能会导致任务阻塞的 API 函数。
+**软件定时器回调函数会在定时器设定的时间到期时在软件定时器的服务/守护任务中被执行**，软件定时器回调函数从头到尾执行，并以正常方式退出
 
 软件定时器服务任务：在调用函数`vTaskStartScheduler()`开启任务调度器的时候，会创建一个用于管理软件定时器的任务，这个任务就叫做**软件定时器服务任务**。
+
+需要读者注意的是软件定时器的回调函数应尽可能简短，**并且在该函数体内不能调用任何会使任务进入阻塞状态的 API 函数**，但是如果设置调用函数的 xTicksToWait 参数为 0 ，则可以调用如 xQueueReceive() 等 API 函数
 
 软件定时器服务任务作用:
 
@@ -2590,6 +2573,16 @@ BaseType_t xTaskNotifyAndQueryFromISR(TaskHandle_t xTaskToNotify,
 2. 调用超时软件定时器的超时回调函数 
 
 3. 处理软件定时器命令队列 
+
+## 软件定时器属性和状态
+
+### 周期
+
+这个属性比较好理解，软件定时器的周期指的是 **从软件定时器启动到软件定时器回调函数执行之间的时间**，该属性是定时器不可或缺的重要属性
+
+### 分类
+
+软件定时器根据行为的不同**分为了 单次定时器（One-shot timers） 和 周期定时器（Auto-reload timers） 两种类型**
 
 ### 软件定时器的命令队列
 
@@ -2620,16 +2613,6 @@ FreeRTOS 提供了许多软件定时器相关的 API 函数，这些 API 函数�
 
 **运行态**    运行态的定时器，当指定时间到达之后，它的超时回调函数会被调用
 
-> 新创建的软件定时器处于休眠状态 ，也就是未运行的！ 
-
-### 单次定时器和周期定时器
-
-FreeRTOS 提供了两种软件定时器:
-
-**单次定时器**    单次定时器的一旦定时超时，只会执行一次其软件定时器超时回调函数，不会自动重新开启定时，不过可以被手动重新开启。
-
-**周期定时器**    周期定时器的一旦启动以后就会在执行完回调函数以后自动的重新启动 ，从而周期地执行其软件定时器回调函数。
-
 ### 软件定时器的状态转换图
 
 单次定时器状态转换图：
@@ -2659,113 +2642,242 @@ typedef    struct
 
 ## 软件定时器相关API函数
 
-|            函数             |             描述             |
-| :-------------------------: | :--------------------------: |
-|       xTimerCreate()        |    动态方式创建软件定时器    |
-|    xTimerCreateStatic()     |    静态方式创建软件定时器    |
-|        xTimerStart()        |      开启软件定时器定时      |
-|    xTimerStartFromISR()     |  在中断中开启软件定时器定时  |
-|        xTimerStop()         |      停止软件定时器定时      |
-|     xTimerStopFromISR()     |  在中断中停止软件定时器定时  |
-|        xTimerReset()        |      复位软件定时器定时      |
-|    xTimerResetFromISR()     |  在中断中复位软件定时器定时  |
-|    xTimerChangePeriod()     | 更改软件定时器的定时超时时间 |
-| xTimerChangePeriodFromISR() |   在中断中更改定时超时时间   |
+## 创建、启动软件定时器
 
-### 创建软件定时器API函数
+同样，根据 FreeRTOS API 的惯例，创建软件定时器仍然提供了动态内存创建和静态内存创建两个不同的 API 函数，软件定时器可以在调度程序运行之前创建，也可以在调度程序启动后从任务创建，如下所示为两个 API 函数声明
 
 ```c
-TimerHandle_t   xTimerCreate(     const char * const           pcTimerName,
-                                  const TickType_t             xTimerPeriodInTicks,
-                                  const UBaseType_t            uxAutoReload,
-                                  void * const                 pvTimerID,
-                                  TimerCallbackFunction_t      pxCallbackFunction  ); 
+/**
+  * @brief  动态分配内存创建软件定时器
+  * @param  pcTimerName：定时器的描述性名称，辅助调试用
+  * @param  xTimerPeriod：定时器的周期，参考 “3.2.1、周期” 小节
+  * @param  uxAutoReload：pdTRUE表示周期软件定时器，pdFASLE表示单次软件定时器
+  * @param  pvTimerID：定时器ID
+  * @param  pxCallbackFunction：定时器回调函数指针，参考 “3.1、软件定时器回调函数” 小节
+  * @retval 创建成功则返回创建的定时器的句柄，失败则返回NULL
+  */
+TimerHandle_t xTimerCreate(const char * const pcTimerName,
+						   const TickType_t xTimerPeriod,
+						   const UBaseType_t uxAutoReload,
+						   void * const pvTimerID,
+						   TimerCallbackFunction_t pxCallbackFunction);
+ 
+/**
+  * @brief  动态分配内存创建软件定时器
+  * @param  pcTimerName：定时器的描述性名称，辅助调试用
+  * @param  xTimerPeriod：定时器的周期，参考 “3.2.1、周期” 小节
+  * @param  uxAutoReload：pdTRUE表示周期软件定时器，pdFASLE表示单次软件定时器
+  * @param  pvTimerID：定时器ID
+  * @param  pxCallbackFunction：定时器回调函数指针，参考 “3.1、软件定时器回调函数” 小节
+  * @param  pxTimerBuffer：指向StaticTimer_t类型的变量，然后用该变量保存定时器的状态
+  * @retval 创建成功则返回创建的定时器的句柄，失败则返回NULL
+  */
+TimerHandle_t xTimerCreateStatic(const char * const pcTimerName,
+								  const TickType_t xTimerPeriod,
+								  const UBaseType_t uxAutoReload,
+								  void * const pvTimerID,
+								  TimerCallbackFunction_t pxCallbackFunction
+								  StaticTimer_t *pxTimerBuffer);
 ```
 
-|        形参         |                         描述                          |
-| :-----------------: | :---------------------------------------------------: |
-|     pcTimerName     |                     软件定时器名                      |
-| xTimerPeriodInTicks |           定时超时时间，单位：系统时钟节拍            |
-|    uxAutoReload     | 定时器模式， pdTRUE：周期定时器， pdFALSE：单次定时器 |
-|      pvTimerID      | 软件定时器 ID，用于多个软件定时器公用一个超时回调函数 |
-| pxCallbackFunction  |                软件定时器超时回调函数                 |
-
-| 返回值 |              描述              |
-| :----: | :----------------------------: |
-|  NULL  |       软件定时器创建失败       |
-| 其他值 | 软件定时器创建成功，返回其句柄 |
-
-### 开启软件定时器API函数
+**创建完的软件定时器处于休眠状态，需要调用启动定时器或其他 API 函数才会进入运行状态**，xTimerStart() 可以在调度程序启动之前调用，但是完成此操作后，软件定时器直到调度程序启动的时间才会真正启动，启动定时器的 API 函数如下所述
 
 ```c
-BaseType_t xTimerStart( TimerHandle_t        xTimer,
-                        const TickType_t     xTicksToWait); 
+/**
+  * @brief  启动定时器
+  * @param  xTimer：要操作的定时器句柄
+  * @param  xBlockTime：参考 “3.4.1、xTicksToWait 参数” 小节
+  * @retval 参考 “3.4.2、函数返回值” 小节
+  */
+BaseType_t xTimerStart(TimerHandle_t xTimer,
+					   TickType_t xTicksToWait);
+ 
+/**
+  * @brief  启动定时器的中断安全版本
+  * @param  xTimer：要操作的定时器句柄
+  * @param  pxHigherPriorityTaskWoken：用于通知应用程序编写者是否应该执行上下文切换
+  * @retval 参考 “3.4.2、函数返回值” 小节
+  */
+BaseType_t xTimerStartFromISR(TimerHandle_t xTimer,
+							  BaseType_t *pxHigherPriorityTaskWoken);
 ```
 
-|    形参     |                    描述                    |
-| :---------: | :----------------------------------------: |
-|   xTimer    |          待开启的软件定时器的句柄          |
-| xTickToWait | 发送命令到软件定时器命令队列的最大等待时间 |
+### *xTicksToWait* 参数
 
-| 返回值 |        描述        |
-| :----: | :----------------: |
-| pdPASS | 软件定时器开启成功 |
-| pdFAIL | 软件定时器开启失败 |
+xTimerStart() 使用定时器命令队列向守护进程任务发送 “启动定时器” 命令， *xTicksToWait* 指定调用任务应保持在阻塞状态以等待定时器命令队列上的空间变得可用的最长时间（如果队列已满），该参数需要注意以下几点
 
-### 停止软件定时器API函数
+1. 如果 *xTicksToWait* 为零且定时器命令队列已满，xTimerStart() 将立即返回，该参数以滴答定时器时间刻度为单位，可以使用宏 pdMS_TO_TICKS() 将以毫秒为单位的时间转换为以刻度为单位的时间，例如 pdMS_TO_TICKS(50) 表示阻塞 50ms
+2. 如果在 FreeRTOSConfig.h 中将 INCLUDE_vTaskSuspend 设置为 1，则将 *xTicksToWait* 设置为 portMAX_DELAY 将导致调用任务无限期地保持在阻塞状态（没有超时），以等待定时器命令队列中的空间变得可用
+3. 如果在启动调度程序之前调用 xTimerStart()，则 *xTicksToWait* 的值将被忽略，并且 xTimerStart() 的行为就像 xTicksToWait 已设置为零一样
+
+### xTimerStart() 函数返回值
+
+有两种可能的返回值，分别为 pdPASS 和 pdFALSE ，具体如下所述
+
+① 仅当 “启动定时器” 命令成功发送到定时器命令队列时，才会返回 pdPASS
+
+1. 如果守护程序任务的优先级高于调用 xTimerStart() 的任务的优先级，则调度程序将确保在 xTimerStart() 返回之前处理启动命令。这是因为一旦定时器命令队列中有数据，守护任务就会抢占调用 xTimerStart() 的任务，从而总是保证将命令成功发送到定时器命令队列
+2. 如果指定了阻塞时间（xTicksToWait 不为零），则调用任务可能会被置于阻塞状态，以等待定时器命令队列中的空间在函数返回之前变得可用，只要在阻塞时间到期之前命令已成功写入定时器命令队列，就可以返回 pdPASS
+
+② 如果由于队列已满或超过阻塞时间等原因无法将 “启动定时器” 命令写入定时器命令队列，则将返回 pdFALSE
+
+1. 如果指定了阻塞时间（xTicksToWait 不为零），则调用任务将被置于阻塞状态以等待守护进程任务在定时器命令队列中腾出空间，但是指定的阻塞时间在等待定时器命令队列中腾出空间之前已过期，所以返回 pdFALSE
+
+## 软件定时器 ID
+
+**每个软件定时器都有一个 ID ，它是一个标签值，应用程序编写者可以将其用于任何目的**， ID 被存储在空指针中，因此可以直接存储整数值，指向任何其他对象，或用作函数指针
+
+创建软件定时器时会为 ID 分配一个初始值，之后可以使用 vTimerSetTimerID() API 函数更新 ID，并且可以使用 pvTimerGetTimerID() API 函数查询 ID ，这两个 API 函数具体如下所示
 
 ```c
-BaseType_t xTimerStop(  TimerHandle_t        xTimer,
-                        const TickType_t     xTicksToWait); 
+/**
+  * @brief  设置定时器ID值
+  * @param  xTimer：要操作的定时器句柄
+  * @param  pvNewID：想要设置软件定时器的新ID值
+  * @retval None
+  */
+void vTimerSetTimerID(TimerHandle_t xTimer, void *pvNewID);
+ 
+/**
+  * @brief  获取定时器ID值
+  * @param  xTimer：要操作的定时器句柄
+  * @retval 正在查询的软件定时器ID
+  */
+void *pvTimerGetTimerID(TimerHandle_t xTimer);
 ```
 
-|    形参     |                    描述                    |
-| :---------: | :----------------------------------------: |
-|   xTimer    |          待停止的软件定时器的句柄          |
-| xTickToWait | 发送命令到软件定时器命令队列的最大等待时间 |
+**注意：与其他软件定时器 API 函数不同，vTimerSetTimerID() 和 pvTimerGetTimerID() 直接访问软件定时器，它们不向定时器命令队列发送命令**
 
-| 返回值 |        描述        |
-| :----: | :----------------: |
-| pdPASS | 软件定时器停止成功 |
-| pdFAIL | 软件定时器停止失败 |
+如果创建了多个软件定时器，并且所有软件定时器均使用了同一个回调函数，**则可以给软件定时器设置不同的 ID 值，然后在回调函数中通过 ID 值判断软件定时器触发的来源**
 
-### 复位软件定时器API函数
+## 改变软件定时器周期
+
+创建软件定时器时就会为定时器周期设置初始值，后续也可以使用 xTimerChangePeriod() 函数动态更改软件定时器的周期，该函数具体声明如下所示
 
 ```c
-BaseType_t xTimerReset( TimerHandle_t        xTimer,
-                        const TickType_t     xTicksToWait); 
+/**
+  * @brief  改变软件定时器的周期
+  * @param  xTimer：要操作的定时器句柄
+  * @param  xNewPeriod：软件定时器的新周期，以刻度为单位指定
+  * @param  xBlockTime：参考 “3.4.1、xTicksToWait 参数” 小节
+  * @retval 参考 “3.4.2、xTimerStart() 函数返回值” 小节
+  */
+ BaseType_t xTimerChangePeriod(TimerHandle_t xTimer,
+							   TickType_t xNewPeriod,
+							   TickType_t xBlockTime);
+ 
+/**
+  * @brief  改变软件定时器周期的中断安全版本
+  * @param  xTimer：要操作的定时器句柄
+  * @param  xNewPeriod：软件定时器的新周期，以刻度为单位指定
+  * @param  pxHigherPriorityTaskWoken：用于通知应用程序编写者是否应该执行上下文切换
+  * @retval 参考 “3.4.2、xTimerStart() 函数返回值” 小节
+  */
+ BaseType_t xTimerChangePeriodFromISR(TimerHandle_t xTimer,
+									  TickType_t xNewPeriod,
+									  BaseType_t *pxHigherPriorityTaskWoken);
 ```
 
-该功能将使软件定时器的重新开启定时，复位后的软件定时器以复位时的时刻作为开启时刻重新定时
+如果 xTimerChangePeriod() 用于更改已运行的定时器的周期，则定时器将使用新的周期值重新计算其到期时间，**重新计算的到期时间是相对于调用 xTimerChangePeriod() 的时间，而不是相对于定时器最初启动的时间**
 
-|    形参     |                    描述                    |
-| :---------: | :----------------------------------------: |
-|   xTimer    |          待复位的软件定时器的句柄          |
-| xTickToWait | 发送命令到软件定时器命令队列的最大等待时间 |
+**如果使用 xTimerChangePeriod() 更改处于休眠状态（未运行的定时器）的定时器的周期，则定时器将计算到期时间，并转换到运行状态（定时器将开始运行）**
 
-| 返回值 |        描述        |
-| :----: | :----------------: |
-| pdPASS | 软件定时器复位成功 |
-| pdFAIL | 软件定时器复位失败 |
-
-### 更改软件定时器超时时间API函数
+另外如果希望查询一个定时器的定时周期，可以通过 xTimerGetPeriod() API 函数查询，具体函数声明如下所述
 
 ```c
-BaseType_t xTimerChangePeriod( TimerHandle_t        xTimer,
-                               const TickType_t     xNewPeriod,
-                               const TickType_t     xTicksToWait); 
+/**
+  * @brief  查询一个软件定时器的周期
+  * @param  xTimer：要查询的定时器句柄
+  * @retval 返回一个软件定时器的周期
+  */
+TickType_t xTimerGetPeriod(TimerHandle_t xTimer);
 ```
 
-|    形参     |                    描述                    |
-| :---------: | :----------------------------------------: |
-|   xTimer    |          待更新的软件定时器的句柄          |
-| xNewPeriod  |    新的定时超时时间，单位：系统时钟节拍    |
-| xTickToWait | 发送命令到软件定时器命令队列的最大等待时间 |
+## 重置软件定时器
 
-| 返回值 |              描述              |
-| :----: | :----------------------------: |
-| pdPASS | 软件定时器定时超时时间更改成功 |
-| pdFAIL | 软件定时器定时超时时间更改失败 |
+重置软件定时器是指重新启动定时器，**定时器的到期时间将根据重置定时器的时间重新计算，而不是相对于定时器最初启动的时间**，如下图对此进行了演示，其中显示了一个定时器，该定时器启动的周期为 6，然后重置两次，最后到期并执行其回调函数
+
+![重置软件定时器](picture/重置软件定时器.png)
+
+FreeRTOS中使用 xTimerReset() API 函数重置软件定时器，除此之外还可用于启动处于休眠状态的定时，该函数具体声明如下所述
+
+```c
+/**
+  * @brief  重置软件定时器
+  * @param  xTimer：要操作的定时器句柄
+  * @param  xBlockTime：参考 “3.4.1、xTicksToWait 参数” 小节
+  * @retval 参考 “3.4.2、xTimerStart() 函数返回值” 小节
+  */
+BaseType_t xTimerReset(TimerHandle_t xTimer,
+					   TickType_t xBlockTime);
+ 
+/**
+  * @brief  重置软件定时器的中断安全版本
+  * @param  xTimer：要操作的定时器句柄
+  * @param  pxHigherPriorityTaskWoken：用于通知应用程序编写者是否应该执行上下文切换
+  * @retval 参考 “3.4.2、xTimerStart() 函数返回值” 小节
+  */
+BaseType_t xTimerResetFromISR(TimerHandle_t xTimer,
+							  BaseType_t *pxHigherPriorityTaskWoken);
+```
+
+## 3.8、停止、删除软件定时器
+
+```c
+/**
+  * @brief  停止软件定时器
+  * @param  xTimer：要操作的定时器句柄
+  * @param  xBlockTime：参考 “3.4.1、xTicksToWait 参数” 小节
+  * @retval 参考 “3.4.2、xTimerStart() 函数返回值” 小节
+  */
+BaseType_t xTimerStop(TimerHandle_t xTimer,
+					  TickType_t xBlockTime);
+ 
+/**
+  * @brief  删除软件定时器
+  * @param  xTimer：要操作的定时器句柄
+  * @param  xBlockTime：参考 “3.4.1、xTicksToWait 参数” 小节
+  * @retval 参考 “3.4.2、xTimerStart() 函数返回值” 小节
+  */
+BaseType_t xTimerDelete(TimerHandle_t xTimer,
+						TickType_t xBlockTime);
+ 
+/**
+  * @brief  停止软件定时器的中断安全版本
+  * @param  xTimer：要操作的定时器句柄
+  * @param  pxHigherPriorityTaskWoken：用于通知应用程序编写者是否应该执行上下文切换
+  * @retval 参考 “3.4.2、xTimerStart() 函数返回值” 小节
+  */
+BaseType_t xTimerStopFromISR(TimerHandle_t xTimer,
+							 BaseType_t *pxHigherPriorityTaskWoken);
+```
+
+## 3.9、其他 API 函数
+
+```c
+/**
+  * @brief  将软件定时器的“模式”更新为 自动重新加载定时器 或 一次性定时器 
+  * @param  xTimer：要操作的定时器句柄
+  * @param  uxAutoReload：设置为pdTRUE则将定时器设置为周期软件定时器，设置为pdFASLE则将定时器设置为单次软件定时器
+  * @retval None
+  */
+void vTimerSetReloadMode(TimerHandle_t xTimer,
+						 const UBaseType_t uxAutoReload);
+ 
+/**
+  * @brief  查询软件定时器是 单次定时器 还是 周期定时器
+  * @param  xTimer：要查询的定时器句柄
+  * @retval 如果为周期软件定时器则返回pdTRUE，否则返回pdFALSE
+  */
+BaseType_t xTimerGetReloadMode(TimerHandle_t xTimer);
+ 
+/**
+  * @brief  查询软件定时器到期的时间
+  * @param  xTimer：要查询的定时器句柄
+  * @retval 如果要查询的定时器处于活动状态则返回定时器下一次到期的时间，否则未定义返回值
+  */
+TickType_t xTimerGetExpiryTime(TimerHandle_t xTimer);
+```
 
 # Tickless低功耗模式
 
