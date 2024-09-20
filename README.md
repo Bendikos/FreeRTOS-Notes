@@ -4,7 +4,7 @@
 
 **调度器保证了总是在所有可运行的任务中选择具有最高优先级的任务，并将其进入运行态**
 
-根据 *configUSE_PREEMPTION* （使用抢占调度器） 和 *configUSE_TIME_SLICING* （使用时间片轮询） 两个参数的不同，FreeRTOS涉及三种不同的调度方法
+根据 configUSE_PREEMPTION（使用抢占调度器） 和 configUSE_TIME_SLICING（使用时间片轮询） 两个参数的不同，FreeRTOS涉及三种不同的调度方法
 
 1. 时间片轮询的抢占式调度方法（configUSE_PREEMPTION=1，configUSE_TIME_SLICING=1）
 2. 不用时间片轮询的抢占式调度方法（configUSE_PREEMPTION=1，configUSE_TIME_SLICING=0）
@@ -2154,7 +2154,7 @@ EventBits_t xEventGroupClearBits(EventGroupHandle_t xEventGroup,
 /**
   * @brief  上述两个函数的中断安全版本
   * @param  pxHigherPriorityTaskWoken：用于通知应用程序编写者是否应该执行上下文切换
-  * @retval 消息已发送到RTOS守护进程任务，则返回pdPASS，否则将返回pdFAIL
+  * @retval 消息已发送到RTOS软件定时器服务任务，则返回pdPASS，否则将返回pdFAIL
   */
 BaseType_t xEventGroupSetBitsFromISR(EventGroupHandle_t xEventGroup,
 									 const EventBits_t uxBitsToSet,
@@ -2644,7 +2644,7 @@ typedef struct
 /**
   * @brief  动态分配内存创建软件定时器
   * @param  pcTimerName：定时器的描述性名称，辅助调试用
-  * @param  xTimerPeriod：定时器的周期，参考 “周期” 小节
+  * @param  xTimerPeriod：定时器的周期，单位为系统节拍周期，即tick
   * @param  uxAutoReload：pdTRUE表示周期软件定时器，pdFASLE表示单次软件定时器
   * @param  pvTimerID：定时器ID
   * @param  pxCallbackFunction：定时器回调函数指针，参考 “软件定时器回调函数” 小节
@@ -2659,10 +2659,10 @@ TimerHandle_t xTimerCreate(const char * const pcTimerName,
 /**
   * @brief  动态分配内存创建软件定时器
   * @param  pcTimerName：定时器的描述性名称，辅助调试用
-  * @param  xTimerPeriod：定时器的周期，参考 “周期” 小节
+  * @param  xTimerPeriod：定时器的周期，单位为系统节拍周期，即tick
   * @param  uxAutoReload：pdTRUE表示周期软件定时器，pdFASLE表示单次软件定时器
   * @param  pvTimerID：定时器ID
-  * @param  pxCallbackFunction：定时器回调函数指针，参考 “软件定时器回调函数” 小节
+  * @param  pxCallbackFunction：定时器回调函数指针
   * @param  pxTimerBuffer：指向StaticTimer_t类型的变量，然后用该变量保存定时器的状态
   * @retval 创建成功则返回创建的定时器的句柄，失败则返回NULL
   */
@@ -2674,14 +2674,14 @@ TimerHandle_t xTimerCreateStatic(const char * const pcTimerName,
 								  StaticTimer_t *pxTimerBuffer);
 ```
 
-**创建完的软件定时器处于休眠状态，需要调用启动定时器或其他 API 函数才会进入运行状态**，xTimerStart() 可以在调度程序启动之前调用，但是完成此操作后，软件定时器直到调度程序启动的时间才会真正启动，启动定时器的 API 函数如下所述
+**创建完的软件定时器处于休眠状态，需要调用xTimerStart()或其他 API 函数才会进入运行状态**
 
 ```c
 /**
   * @brief  启动定时器
   * @param  xTimer：要操作的定时器句柄
   * @param  xBlockTime：参考 “xTicksToWait 参数” 小节
-  * @retval 参考 “函数返回值” 小节
+  * @retval 参考 “xTimerStart()函数返回值” 小节
   */
 BaseType_t xTimerStart(TimerHandle_t xTimer,
 					   TickType_t xTicksToWait);
@@ -2690,7 +2690,7 @@ BaseType_t xTimerStart(TimerHandle_t xTimer,
   * @brief  启动定时器的中断安全版本
   * @param  xTimer：要操作的定时器句柄
   * @param  pxHigherPriorityTaskWoken：用于通知应用程序编写者是否应该执行上下文切换
-  * @retval 参考 “函数返回值” 小节
+  * @retval 参考 “xTimerStart()函数返回值” 小节
   */
 BaseType_t xTimerStartFromISR(TimerHandle_t xTimer,
 							  BaseType_t *pxHigherPriorityTaskWoken);
@@ -2698,7 +2698,7 @@ BaseType_t xTimerStartFromISR(TimerHandle_t xTimer,
 
 ### *xTicksToWait* 参数
 
-xTimerStart() 使用定时器命令队列向守护进程任务发送 “启动定时器” 命令， *xTicksToWait* 指定调用任务应保持在阻塞状态以等待定时器命令队列上的空间变得可用的最长时间（如果队列已满），该参数需要注意以下几点
+xTimerStart() 使用定时器命令队列向软件定时器服务任务发送 “启动定时器” 命令， *xTicksToWait* 指定调用任务应保持在阻塞状态以等待定时器命令队列上的空间变得可用的最长时间（如果队列已满），该参数需要注意以下几点
 
 1. 如果 *xTicksToWait* 为零且定时器命令队列已满，xTimerStart() 将立即返回，该参数以滴答定时器时间刻度为单位，可以使用宏 pdMS_TO_TICKS() 将以毫秒为单位的时间转换为以刻度为单位的时间，例如 pdMS_TO_TICKS(50) 表示阻塞 50ms
 2. 如果在 FreeRTOSConfig.h 中将 INCLUDE_vTaskSuspend 设置为 1，则将 *xTicksToWait* 设置为 portMAX_DELAY 将导致调用任务无限期地保持在阻塞状态（没有超时），以等待定时器命令队列中的空间变得可用
@@ -2715,7 +2715,7 @@ xTimerStart() 使用定时器命令队列向守护进程任务发送 “启动�
 
 ② 如果由于队列已满或超过阻塞时间等原因无法将 “启动定时器” 命令写入定时器命令队列，则将返回 pdFALSE
 
-1. 如果指定了阻塞时间（xTicksToWait 不为零），则调用任务将被置于阻塞状态以等待守护进程任务在定时器命令队列中腾出空间，但是指定的阻塞时间在等待定时器命令队列中腾出空间之前已过期，所以返回 pdFALSE
+1. 如果指定了阻塞时间（xTicksToWait 不为零），则调用任务将被置于阻塞状态以等待软件定时器服务任务在定时器命令队列中腾出空间，但是指定的阻塞时间在等待定时器命令队列中腾出空间之前已过期，所以返回 pdFALSE
 
 ## 软件定时器 ID
 
@@ -2754,7 +2754,7 @@ void *pvTimerGetTimerID(TimerHandle_t xTimer);
   * @param  xTimer：要操作的定时器句柄
   * @param  xNewPeriod：软件定时器的新周期，以刻度为单位指定
   * @param  xBlockTime：参考 “xTicksToWait 参数” 小节
-  * @retval 参考 “3.4.2、xTimerStart() 函数返回值” 小节
+  * @retval 参考 “xTimerStart() 函数返回值” 小节
   */
  BaseType_t xTimerChangePeriod(TimerHandle_t xTimer,
 							   TickType_t xNewPeriod,
@@ -2765,7 +2765,7 @@ void *pvTimerGetTimerID(TimerHandle_t xTimer);
   * @param  xTimer：要操作的定时器句柄
   * @param  xNewPeriod：软件定时器的新周期，以刻度为单位指定
   * @param  pxHigherPriorityTaskWoken：用于通知应用程序编写者是否应该执行上下文切换
-  * @retval 参考 “3.4.2、xTimerStart() 函数返回值” 小节
+  * @retval 参考 “xTimerStart() 函数返回值” 小节
   */
  BaseType_t xTimerChangePeriodFromISR(TimerHandle_t xTimer,
 									  TickType_t xNewPeriod,
@@ -2800,7 +2800,7 @@ FreeRTOS中使用 xTimerReset() API 函数重置软件定时器，除此之外�
   * @brief  重置软件定时器
   * @param  xTimer：要操作的定时器句柄
   * @param  xBlockTime：参考 “xTicksToWait 参数” 小节
-  * @retval 参考 “3.4.2、xTimerStart() 函数返回值” 小节
+  * @retval 参考 “xTimerStart() 函数返回值” 小节
   */
 BaseType_t xTimerReset(TimerHandle_t xTimer,
 					   TickType_t xBlockTime);
@@ -2809,7 +2809,7 @@ BaseType_t xTimerReset(TimerHandle_t xTimer,
   * @brief  重置软件定时器的中断安全版本
   * @param  xTimer：要操作的定时器句柄
   * @param  pxHigherPriorityTaskWoken：用于通知应用程序编写者是否应该执行上下文切换
-  * @retval 参考 “3.4.2、xTimerStart() 函数返回值” 小节
+  * @retval 参考 “xTimerStart() 函数返回值” 小节
   */
 BaseType_t xTimerResetFromISR(TimerHandle_t xTimer,
 							  BaseType_t *pxHigherPriorityTaskWoken);
@@ -2822,7 +2822,7 @@ BaseType_t xTimerResetFromISR(TimerHandle_t xTimer,
   * @brief  停止软件定时器
   * @param  xTimer：要操作的定时器句柄
   * @param  xBlockTime：参考 “xTicksToWait 参数” 小节
-  * @retval 参考 “3.4.2、xTimerStart() 函数返回值” 小节
+  * @retval 参考 “xTimerStart() 函数返回值” 小节
   */
 BaseType_t xTimerStop(TimerHandle_t xTimer,
 					  TickType_t xBlockTime);
@@ -2831,7 +2831,7 @@ BaseType_t xTimerStop(TimerHandle_t xTimer,
   * @brief  删除软件定时器
   * @param  xTimer：要操作的定时器句柄
   * @param  xBlockTime：参考 “xTicksToWait 参数” 小节
-  * @retval 参考 “3.4.2、xTimerStart() 函数返回值” 小节
+  * @retval 参考 “xTimerStart() 函数返回值” 小节
   */
 BaseType_t xTimerDelete(TimerHandle_t xTimer,
 						TickType_t xBlockTime);
@@ -2840,7 +2840,7 @@ BaseType_t xTimerDelete(TimerHandle_t xTimer,
   * @brief  停止软件定时器的中断安全版本
   * @param  xTimer：要操作的定时器句柄
   * @param  pxHigherPriorityTaskWoken：用于通知应用程序编写者是否应该执行上下文切换
-  * @retval 参考 “3.4.2、xTimerStart() 函数返回值” 小节
+  * @retval 参考 “xTimerStart() 函数返回值” 小节
   */
 BaseType_t xTimerStopFromISR(TimerHandle_t xTimer,
 							 BaseType_t *pxHigherPriorityTaskWoken);
