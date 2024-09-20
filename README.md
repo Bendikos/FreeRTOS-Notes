@@ -1307,8 +1307,8 @@ typedef struct QueueDefinition
 ```c
 typedef struct QueuePointers
 {
-     int8_t * pcTail;                 /* 存储区的结束地址 */
-     int8_t * pcReadFrom;            /* 最后一个读取队列的地址 */
+    int8_t * pcTail;                 /* 存储区的结束地址 */
+    int8_t * pcReadFrom;            /* 最后一个读取队列的地址 */
 } QueuePointers_t;
 ```
 
@@ -1339,12 +1339,12 @@ typedef struct SemaphoreData
 
 ![动态方式创建队列函数](picture/动态方式创建队列函数.png)
 
-此函数用于使用动态方式创建队列，队列所需的内存空间由 FreeRTOS 从 FreeRTOS 管理的堆中分配 
+此函数用于动态方式创建队列
 
-|     形参      |       描述       |
-| :-----------: | :--------------: |
-| uxQueueLength | 动态方式创建队列 |
-|  uxItemSize   |  队列项目的大小  |
+|     形参      |      描述      |
+| :-----------: | :------------: |
+| uxQueueLength |    队列长度    |
+|  uxItemSize   | 队列项目的大小 |
 
 | 返回值 |            描述            |
 | :----: | :------------------------: |
@@ -1394,7 +1394,7 @@ typedef struct SemaphoreData
 往队列写入消息函数入口参数解析：
 
 ```c
-BaseType_t        xQueueGenericSend(  QueueHandle_t     xQueue,                                
+BaseType_t        xQueueGenericSend(  QueueHandle_t     xQueue,                       
                                     const void * const     pvItemToQueue,
                                     TickType_t         xTicksToWait,
                                     const BaseType_t     xCopyPosition   ); 
