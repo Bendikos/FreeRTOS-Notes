@@ -2257,7 +2257,7 @@ typedef struct tskTaskControlBlock
 #define     taskNOTIFICATION_RECEIVED    ( ( uint8_t ) 2 ) /* 任务已经收到通知。也被称为pending（挂起）。当任务成功接收到通知时，其状态将从等待通知状态切换到通知已接收状态。任务可以通过调用 ulTaskNotifyTake 函数获取通知的值，并执行相应的操作。 */
 ```
 
-## 任务通知 API 概述
+## 任务通知 API 函数概述
 
 1. **强大通用但较复杂的 xTaskNotify() 和 xTaskNotifyWait() API 函数**
 2. **用作二进制或计数信号量的更轻量级且更快的替代方案的 xTaskNotifyGive() 和 ulTaskNotifyTake() API 函数**
