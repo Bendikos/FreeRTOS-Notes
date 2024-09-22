@@ -2592,7 +2592,7 @@ TimerHandle_t xTimerCreateStatic(const char * const pcTimerName,
   * @param  xBlockTime：参考 “xTicksToWait 参数” 小节
   * @retval 参考 “xTimerStart()函数返回值” 小节
   */
-BaseType_t xTimerStart(TimerHandle_t xTimer,
+    BaseType_t xTimerStart(TimerHandle_t xTimer,
 					   TickType_t xTicksToWait);
  
 /**
