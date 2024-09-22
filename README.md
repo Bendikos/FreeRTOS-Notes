@@ -2533,15 +2533,15 @@ FreeRTOS 提供了许多软件定时器相关的 API 函数，这些 API 函数�
 ```c
 typedef struct
 {
-    const char *                       pcTimerName           /* 软件定时器名字 */
-    ListItem_t                         xTimerListItem        /* 软件定时器列表项 */
-    TickType_t                         xTimerPeriodInTicks;  /* 软件定时器的周期 */     
-    void *                             pvTimerID             /* 软件定时器的ID */
-    TimerCallbackFunction_t             pxCallbackFunction;  /* 软件定时器的回调函数 */
+    const char *              pcTimerName           /* 软件定时器名字 */
+    ListItem_t                xTimerListItem        /* 软件定时器列表项 */
+    TickType_t                xTimerPeriodInTicks;  /* 软件定时器的周期 */     
+    void *                    pvTimerID             /* 软件定时器的ID */
+    TimerCallbackFunction_t   pxCallbackFunction;  /* 软件定时器的回调函数 */
 #if ( configUSE_TRACE_FACILITY == 1 )
- UBaseType_t                     uxTimerNumber               /*  软件定时器的编号，调试用  */
+ UBaseType_t                  uxTimerNumber       /*  软件定时器的编号，调试用  */
 #endif
-    uint8_t                         ucStatus;                /*  软件定时器的状态  */
+    uint8_t                   ucStatus;           /*  软件定时器的状态  */
 } xTIMER;
 ```
 
@@ -2609,7 +2609,7 @@ BaseType_t xTimerStartFromISR(TimerHandle_t xTimer,
 
 xTimerStart() 使用定时器命令队列向软件定时器服务任务发送 “启动定时器” 命令， *xTicksToWait* 指定调用任务应保持在阻塞状态以等待定时器命令队列上的空间变得可用的最长时间（如果队列已满），该参数需要注意以下几点
 
-1. 如果 *xTicksToWait* 为零且定时器命令队列已满，xTimerStart() 将立即返回，该参数以滴答定时器时间刻度为单位，可以使用宏 pdMS_TO_TICKS() 将以毫秒为单位的时间转换为以刻度为单位的时间，例如 pdMS_TO_TICKS(50) 表示阻塞 50ms
+1. 如果 *xTicksToWait* 为零且定时器命令队列已满，xTimerStart() 将立即返回，该参数以滴答定时器时间刻度为单位
 2. 如果在 FreeRTOSConfig.h 中将 INCLUDE_vTaskSuspend 设置为 1，则将 *xTicksToWait* 设置为 portMAX_DELAY 将导致调用任务无限期地保持在阻塞状态（没有超时），以等待定时器命令队列中的空间变得可用
 3. 如果在启动调度程序之前调用 xTimerStart()，则 *xTicksToWait* 的值将被忽略，并且 xTimerStart() 的行为就像 xTicksToWait 已设置为零一样
 
