@@ -702,15 +702,7 @@ typedef struct xMINI_LIST_ITEM MiniListItem_t;
 
 ![迷你列表项结构示意图](picture/迷你列表项结构示意图.png)
 
-## 列表相关API函数介绍
-
-|         函数          |        描述        |
-| :-------------------: | :----------------: |
-|   vListInitialise()   |     初始化列表     |
-| vListInitialiseItem() |    初始化列表项    |
-|   vListInsertEnd()    | 列表末尾插入列表项 |
-|     vListInsert()     |   列表插入列表项   |
-|    uxListRemove()     |   列表移除列表项   |
+## 函数
 
 ### 初始化列表vListInitialise()
 
@@ -755,14 +747,13 @@ void vListInitialiseItem( ListItem_t *const pxItem )
 
 ### 列表项有序插入列表函数vListInsert()
 
-此函数用于将待插入列表的列表项按照列表项值升序进行排序, 有序地插入到列表中 
-
-|     形参      |     描述     |
-| :-----------: | :----------: |
-|    pxList     |     列表     |
-| pxNewListItem | 待插入列表项 |
-
 ```c
+/**
+  * @brief  此函数用于将待插入列表的列表项按照列表项值升序进行排序, 有序地插入到列表中 
+  * @param  pxList：列表
+  * @param  pxNewListItem：待插入列表项
+  * @retval None
+  */
 void vListInsert( List_t *const pxList, ListItem_t *const pxNewListItem )
 {
     ListItem_t *pxIterator;
@@ -791,6 +782,12 @@ void vListInsert( List_t *const pxList, ListItem_t *const pxNewListItem )
 ### 列表项无序插入列表函数vListInsertEnd()
 
 ```c
+/**
+  * @brief  此函数用于将待插入列表的列表项插入到列表 pxIndex 指针指向的列表项前面, 是一种无序的插入方法  
+  * @param  pxList：列表
+  * @param  pxNewListItem：待插入列表项
+  * @retval None
+  */
 void vListInsertEnd(List_t *const pxList, ListItem_t *const pxNewListItem)
 {
     省略部分非关键代码 … …
@@ -809,30 +806,14 @@ void vListInsertEnd(List_t *const pxList, ListItem_t *const pxNewListItem)
 }
 ```
 
-|     形参      |     描述     |
-| :-----------: | :----------: |
-|    pxList     |     列表     |
-| pxNewListItem | 待插入列表项 |
-
-此函数用于将待插入列表的列表项插入到列表 pxIndex 指针指向的列表项前面, 是一种无序的插入方法 
-
 ### 列表项移除函数uxListRemove()
 
 ```c
-UBaseType_t uxListRemove (ListItem_t* const pxItemToRemove);
-```
-
-此函数用于将列表项从列表项所在列表中移除
-
-|      形参      |      描述      |
-| :------------: | :------------: |
-| pxItemToRemove | 待移除的列表项 |
-
-| 返回值 |                     描述                     |
-| :----: | :------------------------------------------: |
-|  整数  | 待移除列表项移除后, 所在列表剩余列表项的数量 |
-
-```c
+/**
+  * @brief  此函数用于将列表项从列表项所在列表中移除
+  * @param  pxItemToRemove：待移除的列表项
+  * @retval 待移除列表项移除后, 所在列表剩余列表项的数量（整数）
+  */
 UBaseType_t uxListRemove( ListItem_t *const pxItemToRemove )
 {
     List_t *const pxList = pxItemToRemove->pxContainer;
@@ -1076,76 +1057,47 @@ bx r14
 
 # 任务状态查询API函数介绍
 
-## 任务相关API函数介绍
-
-|             函数              |              描述              |
-| :---------------------------: | :----------------------------: |
-|      uxTaskPriorityGet()      |         获取任务优先级         |
-|      vTaskPrioritySet()       |         设置任务优先级         |
-|   uxTaskGetNumberOfTasks()    |      获取系统中任务的数量      |
-|    uxTaskGetSystemState()     |      获取所有任务状态信息      |
-|        vTaskGetInfo()         |     获取指定单个的任务信息     |
-|  xTaskGetCurrentTaskHandle()  |     获取当前任务的任务句柄     |
-|       xTaskGetHandle()        | 根据任务名获取该任务的任务句柄 |
-| uxTaskGetStackHighWaterMark() | 获取任务的任务栈历史剩余最小值 |
-|        eTaskGetState()        |          获取任务状态          |
-|          vTaskList()          | 以`表格`形式获取所有任务的信息 |
-|    vTaskGetRunTimeStats()     |       获取任务的运行时间       |
-
 ```c
+/**
+  * @brief  此函数用于获取指定任务的任务优先级, 使用该函数需将宏INCLUDE_uxTaskPriorityGet置 1
+  * @param  xTask：要查找的任务句柄, NULL代表任务自身
+  * @retval 任务优先级数值（整数）
+  */
 UBaseType_t uxTaskPriorityGet(const TaskHandle_t xTask)
 ```
 
-此函数用于获取指定任务的任务优先级, 使用该函数需将宏`INCLUDE_uxTaskPriorityGet`置 1
-
-| 形参  |                描述                |
-| :---: | :--------------------------------: |
-| xTask | 要查找的任务句柄, NULL代表任务自身 |
-
-| 返回值 |      描述      |
-| :----: | :------------: |
-|  整数  | 任务优先级数值 |
-
 ```c
+/**
+  * @brief  此函数用于改变某个任务的任务优先级, 使用该函数需将宏INCLUDE_vTaskPrioritySet为 1 
+  * @param  xTask：要查找的任务句柄, NULL代表任务自身
+  * @param  uxNewPriority：需要设置的任务优先级
+  * @retval None
+  */
 void vTaskPrioritySet(TaskHandle_t xTask, UBaseType_t uxNewPriority)
 ```
 
-此函数用于改变某个任务的任务优先级, 使用该函数需将宏`INCLUDE_vTaskPrioritySet`为 1 
-
-|     形参      |            描述            |
-| :-----------: | :------------------------: |
-|     xTask     | 任务句柄, NULL代表任务自身 |
-| uxNewPriority |    需要设置的任务优先级    |
-
 ```c
+/**
+  * @brief  此函数用于获取系统中任务的任务数量
+  * @param  None
+  * @retval 系统中任务的数量（整数）
+  */
 UBaseType_t uxTaskGetNumberOfTasks(void)
 ```
 
-此函数用于获取系统中任务的任务数量
-
-| 返回值 |       描述       |
-| :----: | :--------------: |
-|  整型  | 系统中任务的数量 |
-
 ```c
-UBaseType_t uxTaskGetSystemState(TaskStatus_t *const pxTaskStatusArray,const UBaseType_t uxArraySize, configRUN_TIME_COUNTER_TYPE *const pulTotalRunTime )
+/**
+  * @brief  此函数用于获取系统中所有任务的任务状态信息, 使用该函数需将宏configUSE_TRACE_FACILITY置 1
+  * @param  xTaskStatusArray：指向 TaskStatus_t 结构体数组首地址
+  * @param  uxArraySize：接收信息的数组大小
+  * @param  pulTotalRunTime：系统总运行时间, 为NULL 则省略总运行时间值
+  * @retval 获取信息的任务数量（整数）
+  */
+UBaseType_t uxTaskGetSystemState(TaskStatus_t *const pxTaskStatusArray,
+                                 const UBaseType_t uxArraySize, 				                                  configRUN_TIME_COUNTER_TYPE *const pulTotalRunTime )
 ```
 
-此函数用于获取系统中所有任务的任务状态信息, 使用该函数需将宏`configUSE_TRACE_FACILITY`置 1
-
-|       形参       |                   描述                    |
-| :--------------: | :---------------------------------------: |
-| xTaskStatusArray |     指向TaskStatus_t 结构体数组首地址     |
-|   uxArraySize    |            接收信息的数组大小             |
-| pulTotalRunTime  | 系统总运行时间, 为NULL 则省略总运行时间值 |
-
-| 返回值 |        描述        |
-| :----: | :----------------: |
-|  整型  | 获取信息的任务数量 |
-
-```c
-UBaseType_t uxTaskGetSystemState(TaskStatus_t *const pxTaskStatusArray, const UBaseType_t uxArraySize, configRUN_TIME_COUNTER_TYPE * const pulTotalRunTime  )
-```
+### TaskStatus_t 结构体
 
 ```c
 typedef struct xTASK_STATUS
@@ -1163,17 +1115,19 @@ typedef struct xTASK_STATUS
 ```
 
 ```c
-void vTaskGetInfo(TaskHandle_t xTask, TaskStatus_t *pxTaskStatus, BaseType_t xGetFreeStackSpace, eTaskState eState)
+/**
+  * @brief  此函数用于获取指定的单个任务的状态信息, 使用该函数需将宏configUSE_TRACE_FACILITY置 1 
+  * @param  xTask：指定获取信息的任务的句柄
+  * @param  pxTaskStatus：接收任务信息的变量
+  * @param  xGetFreeStackSpace：任务栈历史剩余最小值，当为pdFALSE则跳过这个步骤当为pdTRUE则检查历史剩余最小堆栈
+  * @param  eState：任务状态, 可直接赋值, 如想获取代入eInvalid
+  * @retval None
+  */
+void vTaskGetInfo(TaskHandle_t xTask, 
+                  TaskStatus_t *pxTaskStatus,
+                  BaseType_t xGetFreeStackSpace, 
+                  eTaskState eState)
 ```
-
-此函数用于获取指定的单个任务的状态信息, 使用该函数需将宏`configUSE_TRACE_FACILITY`置 1 
-
-|        形参        |                             描述                             |
-| :----------------: | :----------------------------------------------------------: |
-|       xTask        |                   指定获取信息的任务的句柄                   |
-|    pxTaskStatus    |                      接收任务信息的变量                      |
-| xGetFreeStackSpace | 任务栈历史剩余最小值<br />当为`pdFALSE` 则跳过这个步骤<br />当为`pdTRUE`则检查历史剩余最小堆栈 |
-|       eState       |         任务状态, 可直接赋值, 如想获取代入`eInvalid`         |
 
 ```c
 typedef enum
@@ -1188,56 +1142,42 @@ typedef enum
 ```
 
 ```c
+/**
+  * @brief  此函数用于获取当前任务的任务句柄,  使用该函数需将宏INCLUDE_xTaskGetCurrentTaskHandle置 1
+  * @param  None
+  * @retval 当前任务的任务句柄
+  */
 TaskHandle_t xTaskGetCurrentTaskHandle(void)
 ```
 
-此函数用于获取当前任务的任务句柄,  使用该函数需将宏`INCLUDE_xTaskGetCurrentTaskHandle`置 1
-
-|    返回值    |        描述        |
-| :----------: | :----------------: |
-| TaskHandle_t | 当前任务的任务句柄 |
-
 ```c
+/**
+  * @brief  此函数用于通过任务名获取任务句柄 ,  使用该函数需将宏INCLUDE_xTaskGetHandle置 1
+  * @param  pcNameToQuery：任务名
+  * @retval 任务句柄
+  */
 TaskHandle_t xTaskGetHandle(const char *pcNameToQuery)
 ```
 
-此函数用于通过任务名获取任务句柄 ,  使用该函数需将宏`INCLUDE_xTaskGetHandle`置 1
 
-|     形参      |  描述  |
-| :-----------: | :----: |
-| pcNameToQuery | 任务名 |
-
-|   返回值   |   描述   |
-| :--------: | :------: |
-| TaskHandle | 任务句柄 |
 
 ```c
+/**
+  * @brief  此函数用于获取指定任务的任务栈历史最小剩余堆栈; 使用该函数需将宏INCLUDE_uxTaskGetStackHighWaterMark置 1
+  * @param  xTask：任务句柄
+  * @retval 任务栈的历史剩余最小值
+  */
 UBaseType_t uxTaskGetStackHighWaterMark(TaskHandle_t xTask)
 ```
 
-此函数用于获取指定任务的任务栈历史最小剩余堆栈; 使用该函数需将宏`INCLUDE_uxTaskGetStackHighWaterMark`置 1
-
-| 形参  |   描述   |
-| :---: | :------: |
-| xTask | 任务句柄 |
-
-|   返回值    |          描述          |
-| :---------: | :--------------------: |
-| UBaseType_t | 任务栈的历史剩余最小值 |
-
 ```c
+/**
+  * @brief  此函数用于查询某个任务的运行状态, 使用此函数需将宏INCLUDE_eTaskGetState置1 
+  * @param  xTask：待获取状态任务的任务句柄
+  * @retval 任务状态
+  */
 eTaskState eTaskGetState(TaskHandle_t xTask)
 ```
-
-此函数用于查询某个任务的运行状态, 使用此函数需将宏`INCLUDE_eTaskGetState`置1 
-
-| 形参  |           描述           |
-| :---: | :----------------------: |
-| xTask | 待获取状态任务的任务句柄 |
-
-|   返回值   |   描述   |
-| :--------: | :------: |
-| eTaskState | 任务状态 |
 
 ```c
 typedef enum
@@ -1252,14 +1192,13 @@ typedef enum
 ```
 
 ```c
+/**
+  * @brief  此函数用于以表格的形式获取系统中任务的信息 ; 使用此函数需将宏configUSE_TRACE_FACILITY和configUSE_STATS_FORMATTING_FUNCTIONS置1 
+  * @param  pcWriteBuffer：接收任务信息的缓存指针
+  * @retval None
+  */
 void vTaskList(char *pcWriteBuffer)
 ```
-
-此函数用于以`表格`的形式获取系统中任务的信息 ; 使用此函数需将宏`configUSE_TRACE_FACILITY`和`configUSE_STATS_FORMATTING_FUNCTIONS`置1 
-
-|     形参      |          描述          |
-| :-----------: | :--------------------: |
-| pcWriteBuffer | 接收任务信息的缓存指针 |
 
 Name   :  创建任务的时候给任务分配的名字。
 State   :  任务的壮态信息,  B 是阻塞态,  R 是就绪态,  S 是挂起态,  D 是删除态
@@ -1272,14 +1211,13 @@ Num   :  任务编号, 这个编号是唯一的, 当多个任务使用同一个�
 ![以“表格”的形式获取系统中任务的信息 ](picture/以“表格”的形式获取系统中任务的信息 .png)
 
 ```c
+/**
+  * @brief  此函数用于统计任务的运行时间信息, 使用此函数需将宏configGENERATE_RUN_TIME_STAT、configUSE_STATS_FORMATTING_FUNCTIONS置1  
+  * @param  pcWriteBuffer：接收任务运行时间信息的缓存指针
+  * @retval None
+  */
 void vTaskGetRunTimeStats(char *pcWriteBuffer)
 ```
-
-此函数用于统计任务的运行时间信息, 使用此函数需将宏`configGENERATE_RUN_TIME_STAT`、`configUSE_STATS_FORMATTING_FUNCTIONS`置1 
-
-|     形参      |              描述              |
-| :-----------: | :----------------------------: |
-| pcWriteBuffer | 接收任务运行时间信息的缓存指针 |
 
 Task: 任务名称
 
@@ -1997,76 +1935,47 @@ void vSemaphoreDelete(SemaphoreHandle_t xSemaphore);
 
 ## 函数
 
-|             函数             |                 描述                 |
-| :--------------------------: | :----------------------------------: |
-|      xQueueCreateSet()       |              创建队列集              |
-|       xQueueAddToSet()       |          队列添加到队列集中          |
-|    xQueueRemoveFromSet()     |          从队列集中移除队列          |
-|    xQueueSelectFromSet()     |     获取队列集中有有效消息的队列     |
-| xQueueSelectFromSetFromISR() | 在中断中获取队列集中有有效消息的队列 |
-
-此函数用于创建队列集
-
 ```c
-QueueSetHandle_t QueueCreateSet(const UBaseType_t uxEventQueueLength)
+/**
+  * @brief  此函数用于创建队列集
+  * @param  uxEventQueueLength：队列集可容纳的队列数量
+  * @retval 返回创建成功的队列集句柄，如果返回NULL则表示内存不足无法创建
+  */
+QueueSetHandle_t xQueueCreateSet(const UBaseType_t uxEventQueueLength)
 ```
 
-|        形参        |          描述          |
-| :----------------: | :--------------------: |
-| uxEventQueueLength | 队列集可容纳的队列数量 |
-
-| 返回值 |              描述              |
-| :----: | :----------------------------: |
-|  NULL  |         队列集创建失败         |
-| 其他值 | 队列集创建成功，返回队列集句柄 |
-
-此函数用于往队列集中添加队列，要注意的时，队列在被添加到队列集之前，队列中不能有有效的消息
-
 ```c
-BaseType_t xQueueAddToSet(QueueSetMemberHandle_t xQueueOrSemaphore,QueueSetHandle_t xQueueSet)
+/**
+  * @brief  此函数用于往队列集中添加队列，要注意的时，队列在被添加到队列集之前，队列中不能有有效的消息
+  * @param  xQueueOrSemaphore：待添加的队列句柄
+  * @param  xQueueSet：队列集
+  * @retval pdPASS 队列集添加队列成功，pdFAIL 队列集添加队列失败
+  */
+BaseType_t xQueueAddToSet(QueueSetMemberHandle_t xQueueOrSemaphore,
+                          QueueSetHandle_t xQueueSet)
 ```
 
-|       形参        |       描述       |
-| :---------------: | :--------------: |
-| xQueueOrSemaphore | 待添加的队列句柄 |
-|     xQueueSet     |      队列集      |
-
-| 返回值 |        描述        |
-| :----: | :----------------: |
-| pdPASS | 队列集添加队列成功 |
-| pdFAIL | 队列集添加队列失败 |
-
-此函数用于从队列集中移除队列， 要注意的是，队列在从队列集移除之前，必须没有有效的消息
-
 ```c
-BaseType_t xQueueRemoveFromSet(QueueSetMemberHandle_t xQueueOrSemaphore,QueueSetHandle_t xQueueSet)
+/**
+  * @brief  此函数用于从队列集中移除队列， 要注意的是，队列在从队列集移除之前，必须没有有效的消息
+  * @param  xQueueOrSemaphore：待移除的队列句柄
+  * @param  xQueueSet：队列集
+  * @retval pdPASS 队列集移除队列成功，pdFAIL 队列集移除队列失败
+  */
+BaseType_t xQueueRemoveFromSet(QueueSetMemberHandle_t xQueueOrSemaphore,
+                               QueueSetHandle_t xQueueSet)
 ```
 
-|       形参        |       描述       |
-| :---------------: | :--------------: |
-| xQueueOrSemaphore | 待移除的队列句柄 |
-|     xQueueSet     |      队列集      |
-
-| 返回值 |        描述        |
-| :----: | :----------------: |
-| pdPASS | 队列集移除队列成功 |
-| pdFAIL | 队列集移除队列失败 |
-
-此函数用于在任务中获取队列集中有有效消息的队列
-
 ```c
-QueueSetMemberHandle_t xQueueSelectFromSet(QueueSetHandle_t xQueueSet,TickType_t const xTicksToWait)
+/**
+  * @brief  此函数用于在任务中获取队列集中有有效消息的队列
+  * @param  xQueueSet：队列集
+  * @param  xTicksToWait：阻塞超时时间
+  * @retval 返回消息的队列句柄，如果返回NULL则表示获取消息失败
+  */
+QueueSetMemberHandle_t xQueueSelectFromSet(QueueSetHandle_t xQueueSet,
+                                           TickType_t const xTicksToWait)
 ```
-
-|     形参     |     描述     |
-| :----------: | :----------: |
-|  xQueueSet   |    队列集    |
-| xTicksToWait | 阻塞超时时间 |
-
-| 返回值 |         描述         |
-| :----: | :------------------: |
-|  NULL  |     获取消息失败     |
-| 其他值 | 获取到消息的队列句柄 |
 
 ##     **队列集使用流程**
 
@@ -3086,25 +2995,33 @@ vPortDefineHeapRegions(xHeapRegions);
 
 ## 内存管理相关API函数介绍
 
-| **函数**                                   | **描述**               |
-| ------------------------------------------ | ---------------------- |
-| void * pvPortMalloc( size_t xWantedSize ); | 申请内存               |
-| void vPortFree( void * pv );               | 释放内存               |
-| size_t xPortGetFreeHeapSize( void );       | 获取当前空闲内存的大小 |
 
+```c
+/**
+  * @brief  申请内存
+  * @param  xWantedSize：申请的内存大小，以字节为单位
+  * @retval 返回一个指针 ，指向已分配大小的内存。如果申请内存失败，则返回 NULL
+  */
 void * pvPortMalloc( size_t xWantedSize );
+```
 
-- xWantedSize：申请的内存大小，以字节为单位；
-
-- 返回值：返回一个指针 ，指向已分配大小的内存。如果申请内存失败，则返回 NULL。
-
+```c
+/**
+  * @brief  释放内存
+  * @param  pv：指针指向一个要释放内存的内存块
+  * @retval None
+  */
 void vPortFree( void * pv );
+```
 
-* pv：指针指向一个要释放内存的内存块；
-
+```c
+/**
+  * @brief  获取当前空闲内存的大小
+  * @param  None
+  * @retval 返回当前剩余的空闲内存大小
+  */
 size_t xPortGetFreeHeapSize( void );
-
-- 返回值：返回当前剩余的空闲内存大小
+```
 
 初始化后的内存堆，如下：
 
