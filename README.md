@@ -1977,7 +1977,7 @@ QueueSetMemberHandle_t xQueueSelectFromSet(QueueSetHandle_t xQueueSet,
                                            TickType_t const xTicksToWait)
 ```
 
-##     **队列集使用流程**
+##     队列集使用流程
 
 1. 启用队列集功能需要将宏configUSE_QUEUE_SETS 配置为 1
 
@@ -2724,7 +2724,7 @@ BaseType_t xTimerResetFromISR(TimerHandle_t xTimer,
 							  BaseType_t *pxHigherPriorityTaskWoken);
 ```
 
-## 3.8、停止、删除软件定时器
+## 停止、删除软件定时器
 
 ```c
 /**
@@ -2755,7 +2755,7 @@ BaseType_t xTimerStopFromISR(TimerHandle_t xTimer,
 							 BaseType_t *pxHigherPriorityTaskWoken);
 ```
 
-## 3.9、其他 API 函数
+## 其他 API 函数
 
 ```c
 /**
