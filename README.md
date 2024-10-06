@@ -473,6 +473,8 @@ STM32 的中断优先级可以分为`抢占优先级`和`子优先级 `
 | NVIC_PriorityGroup_3 | 0-7 级抢占优先级  | 0-1 级子优先级  | 3bit 用于抢占优先级     1bit 用于子优先级 |
 | NVIC_PriorityGroup_4 | 0-15 级抢占优先级 |  0 级子优先级   | 4bit 用于抢占优先级     0bit 用于子优先级 |
 
+FreeRTOS的中断配置没有处理子优先级（亦称响应优先级）这种情况，所以只能配置为组4，直接就16个优先级，使用起来也简单!
+
 在HAL_Init中通过调用函数`HAL_NVIC_SetPriorityGrouping(NVIC_PRIORITYGROUP_4)`即可完成设置
 
 ## 中断优先级分组设置
